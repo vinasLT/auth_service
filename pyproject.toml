@@ -1,0 +1,35 @@
+[project]
+name = "vinasltauthservice"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "peyro",email = "peyrovskaaa@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "fastapi (>=0.116.1,<0.117.0)",
+    "sqlalchemy (>=2.0.42,<3.0.0)",
+    "pydantic-settings (>=2.10.1,<3.0.0)",
+    "authlib (>=1.6.1,<2.0.0)",
+    "aioboto3 (>=15.0.0,<16.0.0)",
+    "bcrypt (>=4.3.0,<5.0.0)",
+    "redis (>=6.2.0,<7.0.0)",
+    "pydantic[email] (>=2.11.7,<3.0.0)",
+    "uvicorn (>=0.35.0,<0.36.0)",
+    "alembic (>=1.16.4,<2.0.0)",
+    "fastapi-problem (>=0.11.4,<0.12.0)",
+    "fastapi-limiter (>=0.1.6,<0.2.0)",
+    "argon2-cffi (>=25.1.0,<26.0.0)",
+    "pyjwt (>=2.10.1,<3.0.0)",
+    "cryptography (>=45.0.5,<46.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+aiosqlite = "^0.21.0"
+
