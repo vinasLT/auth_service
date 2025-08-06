@@ -1,5 +1,5 @@
 from datetime import datetime, UTC
-from typing import List, TYPE_CHECKING, Optional
+from typing import List, TYPE_CHECKING
 
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from database.models import Base
 
 if TYPE_CHECKING:
-    from database.models.user_role import UserRole
+    from database.models.many_to_many.user_role import UserRole
 
 
 class User(Base):

@@ -5,9 +5,9 @@ from fastapi import FastAPI
 from fastapi_limiter import FastAPILimiter
 
 from config import settings
-from routers.auth import auth_v1_router
+from core.logger import logger
+from routers.v1.auth import auth_v1_router
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
-
 
 
 @asynccontextmanager
@@ -15,6 +15,7 @@ async def lifespan(_: FastAPI):
     r = redis.asyncio.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
     await FastAPILimiter.init(r, prefix="rl:")
     yield
+    logger.info(f"{settings.APP_NAME} started!")
     await FastAPILimiter.close()
 
 
@@ -24,6 +25,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
 
 
 

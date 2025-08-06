@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime, UTC
 from typing import Optional, List, TYPE_CHECKING
 
@@ -5,10 +6,12 @@ from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models import Base
-from database.models.role import role_permissions
 
 if TYPE_CHECKING:
-    from database.models.role import Role, role_permissions
+    from database.models.many_to_many.role_permission import RolePermission
+
+
+
 
 
 class Permission(Base):
@@ -21,7 +24,7 @@ class Permission(Base):
     action: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # e.g., "read", "write", "delete"
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    roles: Mapped[List["Role"]] = relationship(
-        secondary=role_permissions,
-        back_populates="permissions"
+    role_permissions: Mapped[List["RolePermission"]] = relationship(
+        "RolePermission",
+        back_populates="permission"
     )

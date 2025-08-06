@@ -7,8 +7,13 @@ load_dotenv()
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://authuser:authpass@postgres:5432/authdb"
-    SYNC_DATABASE_URL: str = "postgresql://authuser:authpass@postgres:5432/authdb"
+
+    DB_HOST: str = "localhost"
+    DB_PORT: str = "5432"
+    DB_NAME: str = "test_db"
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "testpass"
+
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
@@ -24,8 +29,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Application
-    APP_NAME: str = "Auth Service"
+    APP_NAME: str = "auth-service"
+    AUDIENCE: str = "web-api"
     DEBUG: bool = True
+
 
     class Config:
         env_file = ".env"

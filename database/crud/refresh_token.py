@@ -15,6 +15,11 @@ class RefreshTokenService(BaseService[RefreshToken, RefreshTokenCreate, RefreshT
     def __init__(self, session: AsyncSession):
         super().__init__(RefreshToken, session)
 
+    async def get_by_jti(self, jti: str) -> Optional[RefreshToken]:
+        stmt = select(RefreshToken).where(RefreshToken.jti == jti)
+        res = await self.session.execute(stmt)
+        return res.scalar_one_or_none()
+
     async def get_last_token_in_family(self, family_id: str, only_active: bool = True, require_not_expired: bool = True) -> Optional[RefreshToken]:
         now = datetime.now(UTC)
         conditions = [RefreshToken.token_family == family_id, RefreshToken.replaced_by_id.is_(None)]

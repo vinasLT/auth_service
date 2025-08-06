@@ -14,7 +14,7 @@ config = context.config
 if settings.DEBUG:
     SQLALCHEMY_DATABASE_URL = 'sqlite:///db.sqlite'
 else:
-    SQLALCHEMY_DATABASE_URL = settings.SQLALCHEMY_DATABASE_URL
+    SQLALCHEMY_DATABASE_URL = f'postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}'
 db_url = SQLALCHEMY_DATABASE_URL
 if not db_url:
     raise RuntimeError("DATABASE_URL is not set.")

@@ -5,17 +5,10 @@ from sqlalchemy import DateTime, String, Table, ForeignKey, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models import Base
+from database.models.many_to_many.role_permission import RolePermission
 
 if TYPE_CHECKING:
-    from database.models.user_role import UserRole
-    from database.models.permission import Permission
-
-role_permissions = Table(
-    'role_permissions',
-    Base.metadata,
-    Column('role_id', ForeignKey('role.id'), primary_key=True),
-    Column('permission_id', ForeignKey('permission.id'), primary_key=True)
-)
+    from database.models.many_to_many.user_role import UserRole
 
 
 class Role(Base):
@@ -27,9 +20,10 @@ class Role(Base):
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    users: Mapped[List["UserRole"]] = relationship(back_populates="role")
-    permissions: Mapped[List["Permission"]] = relationship(
-        secondary=role_permissions,
-        back_populates="roles",
-        cascade="all"
+    user_roles: Mapped[List["UserRole"]] = relationship(back_populates="role")
+
+    role_permissions: Mapped[List["RolePermission"]] = relationship(
+        "RolePermission",
+        back_populates="role",
+        cascade="all, delete-orphan"
     )

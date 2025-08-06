@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 89d0fbb841dc
+Revision ID: d52216a3ce16
 Revises: 
-Create Date: 2025-08-05 21:58:06.833178
+Create Date: 2025-08-06 12:35:01.417948
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '89d0fbb841dc'
+revision: str = 'd52216a3ce16'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -105,12 +105,14 @@ def upgrade() -> None:
     op.create_index(op.f('ix_refresh_token_jti'), 'refresh_token', ['jti'], unique=True)
     op.create_index(op.f('ix_refresh_token_token_family'), 'refresh_token', ['token_family'], unique=False)
     op.create_table('role_permissions',
+    sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('role_id', sa.Integer(), nullable=False),
     sa.Column('permission_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['permission_id'], ['permission.id'], ),
     sa.ForeignKeyConstraint(['role_id'], ['role.id'], ),
-    sa.PrimaryKeyConstraint('role_id', 'permission_id')
+    sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_role_permissions_id'), 'role_permissions', ['id'], unique=False)
     op.create_table('user_roles',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -146,6 +148,7 @@ def downgrade() -> None:
     op.drop_table('user_sessions')
     op.drop_index(op.f('ix_user_roles_id'), table_name='user_roles')
     op.drop_table('user_roles')
+    op.drop_index(op.f('ix_role_permissions_id'), table_name='role_permissions')
     op.drop_table('role_permissions')
     op.drop_index(op.f('ix_refresh_token_token_family'), table_name='refresh_token')
     op.drop_index(op.f('ix_refresh_token_jti'), table_name='refresh_token')

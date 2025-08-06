@@ -5,7 +5,7 @@ from config import settings
 if settings.DEBUG:
     SQLALCHEMY_ASYNC_DATABASE_URL = "sqlite+aiosqlite:///./db.sqlite"
 else:
-    SQLALCHEMY_ASYNC_DATABASE_URL = settings.DATABASE_URL
+    SQLALCHEMY_ASYNC_DATABASE_URL = f'postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}'
 
 
 engine_async: AsyncEngine = create_async_engine(SQLALCHEMY_ASYNC_DATABASE_URL, echo=False)

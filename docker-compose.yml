@@ -1,0 +1,11 @@
+services:
+  auth_service:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - logs:/logs/auth-service
+
