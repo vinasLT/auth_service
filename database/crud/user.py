@@ -1,6 +1,6 @@
 from typing import Optional, Dict, List
 
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -19,7 +19,20 @@ class UserService(BaseService[User, UserCreate, UserUpdate]):
 
     async def get_by_email(self, email: str) -> Optional[User]:
         result = await self.session.execute(
-            select(User).where(User.email == email)
+            select(User).where(User.email.ilike(email))
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_phone_number(self, phone_number: str) -> Optional[User]:
+        clean_phone = phone_number.lstrip('+')
+
+        result = await self.session.execute(
+            select(User).where(
+                or_(
+                    User.phone_number == clean_phone,
+                    User.phone_number == '+' + clean_phone
+                )
+            )
         )
         return result.scalar_one_or_none()
 

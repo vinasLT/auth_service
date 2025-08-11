@@ -15,8 +15,6 @@ async def get_current_user(
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_JWT),
         auth_service: AuthService = Depends(get_auth_service),
 ) -> Optional[Dict]:
-    if not credentials:
-        return None
 
     token = credentials.credentials
 

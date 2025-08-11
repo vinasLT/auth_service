@@ -1,17 +1,22 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 
 class UserCreate(BaseModel):
     uuid_key: str
     password_hash: str
+    first_name: str
+    last_name: str
+    language: str = "en"
+    phone_verified: Optional[bool] = False
+    email_verified: Optional[bool] = False
     email: EmailStr
     username: str
     phone_number: str
 
 class UserUpdate(BaseModel):
-    password: Optional[str] = Field(default=None, min_length=8, max_length=32)
-    username: Optional[str] = None
+    phone_verified: Optional[bool] = False
+    email_verified: Optional[bool] = False
 
 class UserRead(BaseModel):
     id: int
@@ -19,7 +24,11 @@ class UserRead(BaseModel):
     email: str
     phone_number: str
     is_active: bool
+    first_name: str
+    last_name: str
+    language: str
+    email_verified: bool
+    phone_verified: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

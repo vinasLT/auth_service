@@ -1,8 +1,8 @@
 """init
 
-Revision ID: d52216a3ce16
+Revision ID: 83995a5c4745
 Revises: 
-Create Date: 2025-08-06 12:35:01.417948
+Create Date: 2025-08-11 13:51:21.109139
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd52216a3ce16'
+revision: str = '83995a5c4745'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -56,11 +56,16 @@ def upgrade() -> None:
     op.create_table('user',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('uuid_key', sa.String(), nullable=False),
+    sa.Column('first_name', sa.String(), nullable=False),
+    sa.Column('last_name', sa.String(), nullable=False),
+    sa.Column('language', sa.String(), nullable=False),
     sa.Column('password_hash', sa.String(), nullable=False),
     sa.Column('email', sa.String(), nullable=False),
     sa.Column('username', sa.String(), nullable=False),
     sa.Column('phone_number', sa.String(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('phone_verified', sa.Boolean(), nullable=False),
+    sa.Column('email_verified', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -125,7 +130,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_user_roles_id'), 'user_roles', ['id'], unique=False)
     op.create_table('user_sessions',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('refresh_token_id', sa.Integer(), nullable=True),
     sa.Column('session_key', sa.String(length=64), nullable=False),
     sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),

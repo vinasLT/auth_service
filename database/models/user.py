@@ -16,11 +16,19 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     uuid_key: Mapped[str] = mapped_column(String, unique=True, index=True)
 
+    first_name: Mapped[str] = mapped_column(String)
+    last_name: Mapped[str] = mapped_column(String)
+
+    language: Mapped[str] = mapped_column(String, default='en')
+
     password_hash: Mapped[str] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, index=True)
     username: Mapped[str] = mapped_column(String, index=True)
     phone_number: Mapped[str] = mapped_column(String, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC),

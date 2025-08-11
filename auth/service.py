@@ -14,6 +14,7 @@ from rfc9457 import UnauthorisedProblem
 
 from auth.kms_sign import Signer
 from config import settings
+from database.models import User
 
 
 class AuthService(Signer):
@@ -104,7 +105,7 @@ class AuthService(Signer):
         return await self._encode_and_sign(payload)
 
 
-    async def get_payload_for_token(self, token_type: Literal["access", "refresh"], user_uuid: str, email: str,
+    async def get_payload_for_token(self, token_type: Literal["access", "refresh"], user: User,
                                     roles_permissions: Dict[str, list[str]] = None,
                                     token_family:str = None) -> Dict[str, Any]:
         if token_type == "access":
@@ -118,8 +119,10 @@ class AuthService(Signer):
         payload: Dict[str, Any] = {
             "iss": self.issuer,
             "aud": self.audience,
-            "sub": user_uuid,
-            "email": email,
+            "sub": user.uuid_key,
+            "email": user.email,
+            'email_verified': user.email_verified,
+            'phone_verified': user.phone_verified,
             "iat": now,
             "exp": now + timedelta(seconds=ttl_seconds),
             "jti": str(uuid.uuid4()),

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from database.models.singing_key import AlgorithmsEnum
 
@@ -25,5 +25,4 @@ class SingingKeyRead(SingingKeyCreate):
     created_at: datetime
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

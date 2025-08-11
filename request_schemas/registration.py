@@ -38,7 +38,7 @@ class EmailPassIn(BaseModel):
     @classmethod
     def validate_email_ascii(cls, v):
         assert re.match(r'^[\x00-\x7F]+$', v), 'Email must be ASCII only'
-        return v
+        return v.lower()
 
 class UserIn(EmailPassIn):
     phone_number: str = Field(
@@ -50,13 +50,32 @@ class UserIn(EmailPassIn):
     @field_validator('phone_number')
     @classmethod
     def phone_e164(cls, v: str) -> str:
-        v = re.sub(r'[\s\-\(\)]', '', v)
+        v = v.lower()
+        v = re.split(r'(x|ext\.|#)', v)[0]
+        v = re.sub(r'[^\d]', '', v)
         if v.startswith('00'):
-            v = '+' + v[2:]
-        if not v.startswith('+') and v.isdigit():
-            v = '+' + v
-        assert re.fullmatch(r'\+[1-9]\d{7,14}', v), 'Invalid phone number format (E.164, e.g., +1234567890)'
+            v = v[2:]
+
+        assert re.fullmatch(r'[1-9]\d{6,14}', v), 'Invalid phone number format (7-15 digits, e.g., 1234567890)'
+
         return v
+
+    first_name: str = Field(
+        ...,
+        description="User first name",
+        json_schema_extra={"example": "John"},
+
+        min_length=1,
+        max_length=32,
+    )
+
+    last_name: str = Field(
+        ...,
+        description="User last name",
+        json_schema_extra={"example": "Doe"},
+        min_length=1,
+        max_length=32,
+    )
 
     model_config = ConfigDict(
         json_schema_extra={

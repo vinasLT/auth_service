@@ -1,8 +1,6 @@
-from fastapi import Depends, APIRouter, Body, Request
-
-from fastapi_limiter.depends import RateLimiter
-
-from rfc9457 import UnauthorisedProblem, ForbiddenProblem
+from fastapi import Depends, APIRouter, Body, Request, Security
+from rfc9457 import UnauthorisedProblem, ForbiddenProblem, ServerProblem, Problem
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, UTC, timedelta
 import uuid
@@ -10,7 +8,7 @@ import uuid
 from auth.service import AuthService
 from core.logger import logger
 
-from custom_exceptions import EmailAlreadyRegistered
+from custom_exceptions import RegisteredWithPresentCredentialsProblem, EmailNotVerifiedProblem
 from database.crud.many_to_many.user_role import UserRoleService
 from database.crud.refresh_token import RefreshTokenService
 from database.crud.role import RoleService
@@ -26,8 +24,7 @@ from database.schemas.user import (
 )
 
 from database.schemas.user_session import UserSessionCreate, UserSessionUpdate
-from deps import get_auth_service, register_rate_limiter_dep, login_rate_limiter_dep
-from rate_limit_ids import user_identifier
+from deps import get_auth_service, get_rate_limiter
 from request_schemas.logout import LogoutRequest
 from request_schemas.refresh import RefreshTokenIn
 from request_schemas.registration import UserIn, EmailPassIn
@@ -38,18 +35,13 @@ from utils import client_ip_from_request, device_name_from_user_agent
 auth_v1_router = APIRouter()
 
 
-@auth_v1_router.get("")
-async def root():
-    logger.debug("Root endpoint accessed")
-    return {"message": "Hello World"}
-
-
 @auth_v1_router.post(
     "/register",
     response_model=UserRead,
+    status_code=201,
     summary="Register a new user",
     description="Create a new user account with email, username, and password.",
-    dependencies=[Depends(register_rate_limiter_dep)]
+    dependencies=[get_rate_limiter(times=15, seconds=120)]
 )
 async def register(
         user_data: UserIn = Body(..., description="User registration payload"),
@@ -63,16 +55,37 @@ async def register(
 
     try:
         user_service = UserService(db)
-        result = await user_service.get_by_email(str(user_data.email))
+        try:
+            result_email = await user_service.get_by_email(str(user_data.email))
+            result_phone_number = await user_service.get_by_phone_number(str(user_data.phone_number))
+        except MultipleResultsFound:
+            logger.error(f'Registration failed - Multiple results found for email or phone number', extra={
+                "email": user_data.email,
+                "phone_number": user_data.phone_number
+            })
+            raise ServerProblem(
+                detail="Multiple results found for email or phone number"
+            )
 
-        if result:
-            logger.warning(f'Registration failed - email already registered', extra={
+        if result_email or result_phone_number:
+
+            if result_email and result_phone_number:
+                text = 'email and phone number'
+            elif result_email:
+                text = 'email'
+            elif result_phone_number:
+                text = 'phone number'
+            else:
+                text = 'some credential'
+
+            logger.warning(f'Registration failed - {text} already registered', extra={
                 "email": user_data.email,
                 "phone_number": user_data.phone_number,
-                "existing_user_id": result.id
+                "existing_user_id": result_email.id if result_email else result_phone_number.id,
             })
-            raise EmailAlreadyRegistered(
-                detail="Email already registered"
+
+            raise RegisteredWithPresentCredentialsProblem(
+                detail="Email or phone number already registered"
             )
 
         role_service = RoleService(db)
@@ -93,7 +106,9 @@ async def register(
             password_hash=password_hash,
             email=user_data.email,
             phone_number=user_data.phone_number,
-            username=str(user_data.email).split('@')[0]
+            username=str(user_data.email).split('@')[0],
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
         )
 
         user = await user_service.create(user_data, flush=True)
@@ -117,7 +132,7 @@ async def register(
 
         return user
 
-    except EmailAlreadyRegistered:
+    except Problem:
         raise
     except Exception as e:
         logger.error(f'Registration failed - unexpected error', extra={
@@ -132,7 +147,7 @@ async def register(
 @auth_v1_router.post("/login", response_model=TokenResponse,
                      description="Login and receive tokens",
                      summary="Login",
-                     dependencies=[Depends(login_rate_limiter_dep)])
+                     dependencies=[get_rate_limiter(times=10, seconds=60)])
 async def login(request: Request, credentials: EmailPassIn = Body(...), db: AsyncSession = Depends(get_async_db),
                 auth_service: AuthService = Depends(get_auth_service)):
     user_agent = request.headers.get("user-agent", "")
@@ -157,14 +172,6 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
             })
             raise UnauthorisedProblem(detail="Invalid email or password")
 
-        if not auth_service.verify_password(credentials.password, str(user.password_hash)):
-            logger.warning(f'Login failed - invalid password', extra={
-                "email": credentials.email,
-                "user_id": user.id,
-                "ip_address": ip_address
-            })
-            raise UnauthorisedProblem(detail="Invalid email or password")
-
         if not user.is_active:
             logger.warning(f'Login failed - account deactivated', extra={
                 "email": credentials.email,
@@ -172,6 +179,29 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
                 "ip_address": ip_address
             })
             raise ForbiddenProblem(detail="Account is deactivated")
+
+        if not user.email_verified:
+            logger.warning(f'Login failed - email not verified', extra={
+                "email": credentials.email,
+                "user_id": user.id,
+            })
+            raise EmailNotVerifiedProblem(
+                detail="Email not verified",
+                user_info={
+                    "user_id": user.id,
+                    "user_uuid": user.uuid_key,
+                    "email": user.email,
+                    "email_verified": user.email_verified
+                }
+            )
+
+        if not auth_service.verify_password(credentials.password, str(user.password_hash)):
+            logger.warning(f'Login failed - invalid password', extra={
+                "email": credentials.email,
+                "user_id": user.id,
+                "ip_address": ip_address
+            })
+            raise UnauthorisedProblem(detail="Invalid email or password")
 
         logger.debug(f'Extracting roles and permissions', extra={
             "user_id": user.id,
@@ -181,14 +211,12 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
         roles_permissions = await user_service.extract_roles_and_permissions_from_user(user.id)
 
         access_token_payload = await auth_service.get_payload_for_token(
-            user_uuid=user.uuid_key,
-            email=user.email,
+            user=user,
             roles_permissions=roles_permissions,
             token_type="access"
         )
         refresh_token_payload = await auth_service.get_payload_for_token(
-            user_uuid=user.uuid_key,
-            email=user.email,
+            user=user,
             token_type="refresh"
         )
 
@@ -247,7 +275,7 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
             "refresh_token": refresh_token,
         }
 
-    except (UnauthorisedProblem, ForbiddenProblem):
+    except Problem:
         raise
     except Exception as e:
         logger.error(f'Login failed - unexpected error', extra={
@@ -264,7 +292,7 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
 async def refresh_token_pair(
         data: RefreshTokenIn = Body(...),
         db: AsyncSession = Depends(get_async_db),
-        auth_service: AuthService = Depends(get_auth_service),
+        auth_service: AuthService = Depends(get_auth_service)
 ):
     logger.info('Token refresh attempt')
 
@@ -347,14 +375,12 @@ async def refresh_token_pair(
 
         now = datetime.now(UTC)
         new_refresh_payload = await auth_service.get_payload_for_token(
-            user_uuid=user.uuid_key,
-            email=user.email,
+            user=user,
             token_type="refresh",
             token_family=family_id
         )
         new_access_payload = await auth_service.get_payload_for_token(
-            user_uuid=user.uuid_key,
-            email=user.email,
+            user=user,
             roles_permissions=roles_permissions,
             token_type="access"
         )
@@ -396,7 +422,7 @@ async def refresh_token_pair(
             "refresh_token": refresh_token,
         }
 
-    except UnauthorisedProblem:
+    except Problem:
         raise
     except Exception as e:
         logger.error(f'Token refresh failed - unexpected error', extra={
@@ -408,7 +434,7 @@ async def refresh_token_pair(
 
 @auth_v1_router.post("/logout")
 async def logout(
-        token_data: dict = Depends(get_current_user),
+        token_data: dict = Security(get_current_user),
         refresh_token_data: LogoutRequest = Body(...),
         auth_service: AuthService = Depends(get_auth_service),
         db: AsyncSession = Depends(get_async_db),
@@ -488,7 +514,7 @@ async def logout(
 
         return {"message": "Successfully logged out"}
 
-    except UnauthorisedProblem:
+    except Problem:
         raise
     except Exception as e:
         logger.error(f'Logout failed - unexpected error', extra={
@@ -497,4 +523,4 @@ async def logout(
             "error": str(e),
             "error_type": type(e).__name__
         })
-        raise
+        raise ServerProblem(detail="Unexpected error")

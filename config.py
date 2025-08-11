@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     AUDIENCE: str = "web-api"
     DEBUG: bool = True
 
+    # RabbitMQ
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost/"
+    RABBITMQ_EXCHANGE_NAME: str = 'events'
+
 
     class Config:
         env_file = ".env"
