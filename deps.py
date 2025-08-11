@@ -41,9 +41,10 @@ def get_rate_limiter(times: int, seconds: int, identifier=user_identifier):
     limiter = RateLimiter(times=times, seconds=seconds, identifier=identifier, callback=raise_rate_limiter_error)
     return Depends(limiter)
 
-async def get_rabbit_mq_service()-> AsyncGenerator[RabbitMQPublisher, Any]:
+async def get_rabbit_mq_service() -> AsyncGenerator[RabbitMQPublisher, None]:
     service = RabbitMQPublisher()
     await service.connect()
-    yield service
-    await service.close()
-
+    try:
+        yield service
+    finally:
+        await service.close()

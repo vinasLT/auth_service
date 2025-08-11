@@ -10,14 +10,20 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from auth.service import AuthService
 from database.db.session import get_async_db
 from database.models import Base
-from deps import get_redis_client, get_auth_service
+from deps import get_redis_client, get_auth_service, get_rabbit_mq_service
 from main import app
+from rabbit_service.service import RabbitMQPublisher
 from security import get_current_user
-from tests.moks import get_test_redis_client, mock_auth_service, mock_get_current_user
+from tests.moks import get_test_redis_client, mock_auth_service, mock_get_current_user, mock_rabbit_mq
 
 
 @pytest_asyncio.fixture
-async def get_app(mock_auth_service, mock_get_current_user, session):
+async def get_app(
+    mock_auth_service,
+    mock_get_current_user,
+    mock_rabbit_mq,
+    session: AsyncSession,
+):
     await FastAPILimiter.init(await get_test_redis_client())
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -26,20 +32,23 @@ async def get_app(mock_auth_service, mock_get_current_user, session):
     async def override_get_redis() -> Redis:
         return await get_test_redis_client()
 
-    async def override_get_auth_service() -> AsyncGenerator[AuthService, Any]:
+    async def override_get_auth_service() -> AsyncGenerator[Any, None]:
         yield mock_auth_service
 
-    async def override_get_current_user() -> AsyncGenerator[AsyncSession, None]:
+    async def override_get_current_user() -> AsyncGenerator[Any, None]:
         yield mock_get_current_user
 
+    async def override_rabbit_mq() -> AsyncGenerator[RabbitMQPublisher, None]:
+        yield mock_rabbit_mq
+
     app.dependency_overrides[get_current_user] = override_get_current_user
-    app.dependency_overrides[get_async_db]     = override_get_db
+    app.dependency_overrides[get_async_db] = override_get_db
     app.dependency_overrides[get_redis_client] = override_get_redis
     app.dependency_overrides[get_auth_service] = override_get_auth_service
+    app.dependency_overrides[get_rabbit_mq_service] = override_rabbit_mq
 
     yield app
 
-    # после всех тестов очищаем
     await FastAPILimiter.close()
     app.dependency_overrides.clear()
 

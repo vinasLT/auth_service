@@ -1,7 +1,12 @@
+from json import JSONDecodeError
+
 from fastapi import Request
 
 async def user_identifier(request: Request) -> str:
-    body = await request.json()
+    try:
+        body = await request.json()
+    except JSONDecodeError:
+        body = None
     if body and body.get('email'):
         return f"email:{body['email']}"
     ip = request.headers.get("X-Forwarded-For")

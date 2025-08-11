@@ -9,7 +9,8 @@ from sqlalchemy import StaticPool
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
 
 from auth.service import AuthService
-from deps import get_auth_service
+from deps import get_auth_service, get_rabbit_mq_service
+from rabbit_service.service import RabbitMQPublisher
 
 
 @pytest.fixture(scope='function')
@@ -35,6 +36,14 @@ def mock_auth_service():
     mock_service.verify_password = Mock(return_value=True)
 
     return mock_service
+
+@pytest.fixture(scope="function")
+def mock_rabbit_mq():
+    mock = Mock(spec=RabbitMQPublisher)
+    mock.publish = AsyncMock(return_value=None)
+    mock.connect = AsyncMock(return_value=None)
+    mock.close = AsyncMock(return_value=None)
+    return mock
 
 
 async def mock_get_payload_for_token(token_type, user_uuid, email, roles_permissions=None, token_family=None):

@@ -3,7 +3,9 @@ from unittest.mock import Mock
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.factories import UserFactory
+
+from tests.factories.token_session_user_factories import UserFactory
+
 
 @pytest.mark.asyncio
 class TestUserLogin:
@@ -42,7 +44,6 @@ class TestUserLogin:
         mock_auth_service.verify_password = Mock(return_value=True)
 
         response = await client.post("v1/login", json=payload)
-        print(response.json())
 
         assert response.status_code == 401
         assert "Email not verified" in response.json()["detail"]

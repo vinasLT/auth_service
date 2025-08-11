@@ -19,7 +19,10 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "test@mail.com",
             "password": "test!1Password",
-            "phone_number": "1234567890"
+            "phone_number": "1234567890",
+            "first_name": "Test",
+            "last_name": "User"
+
         })
 
         assert response.status_code == 409
@@ -30,6 +33,8 @@ class TestUserRegistration:
             "email": new_user.email,
             "phone_number": new_user.phone_number,
             "password": "StrongPass!2",
+            "first_name": new_user.first_name,
+            "last_name": new_user.last_name,
         }
 
         mock_auth_service.hash_password.return_value = "hashed_password"
@@ -49,7 +54,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "invalid-email",
             "password": "StrongPass!2",
-            "phone_number": "+1234567890"
+            "phone_number": "+1234567890",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 422
 
@@ -57,14 +64,18 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "weak@mail.com",
             "password": "123",
-            "phone_number": "+1234567890"
+            "phone_number": "+1234567890",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 422
 
     async def test_register_missing_phone_number(self, client):
         response = await client.post("v1/register", json={
             "email": "missing@mail.com",
-            "password": "StrongPass!2"
+            "password": "StrongPass!2",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 422
 
@@ -76,7 +87,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "another@mail.com",
             "password": "StrongPass!2",
-            "phone_number": "1111111111"
+            "phone_number": "1111111111",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 409
 
@@ -88,7 +101,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "newuser@mail.com",
             "password": "StrongPass!2",
-            "phone_number": "1234567890"
+            "phone_number": "1234567890",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 409
 
@@ -100,7 +115,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "case@test.com",
             "password": "StrongPass!2",
-            "phone_number": "+9999999999"
+            "phone_number": "+9999999999",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 409
 
@@ -108,7 +125,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "shortpass@mail.com",
             "password": "Short1!",
-            "phone_number": "+1234567890"
+            "phone_number": "+1234567890",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 422
 
@@ -120,7 +139,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "deleted@mail.com",
             "password": "StrongPass!2",
-            "phone_number": "1234567890"
+            "phone_number": "1234567890",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 409
 
@@ -132,7 +153,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "deleted@mail.com",
             "password": "StrongPass!2",
-            "phone_number": "+380634379178"
+            "phone_number": "+380634379178",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 409
 
@@ -147,7 +170,9 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "deleted@mail.com",
             "password": "StrongPass!2",
-            "phone_number": "380634379178"
+            "phone_number": "380634379178",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 500
 
@@ -159,6 +184,8 @@ class TestUserRegistration:
         response = await client.post("v1/register", json={
             "email": "deleted@mail.com",
             "password": "StrongPass!2",
-            "phone_number": "380634379178"
+            "phone_number": "380634379178",
+            "first_name": "Test",
+            "last_name": "User"
         })
         assert response.status_code == 409

@@ -7,7 +7,6 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from security import get_current_user
-from tests.factories import UserFactory, RefreshTokenFactory, UserSessionFactory
 
 @pytest.mark.asyncio
 class TestVerify:
