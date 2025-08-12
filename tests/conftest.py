@@ -1,5 +1,6 @@
 from typing import AsyncGenerator, Any
 
+import pytest
 import pytest_asyncio
 from fastapi_limiter import FastAPILimiter
 from httpx import AsyncClient, ASGITransport
@@ -108,7 +109,10 @@ async def init_db():
     async with engine_test_async.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
-
+@pytest.fixture(autouse=True)
+def mock_aws_credentials(monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test_key")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test_secret")
 
 
 
