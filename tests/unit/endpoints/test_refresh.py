@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.factories import UserFactory, RefreshTokenFactory, UserSessionFactory
+from tests.factories.token_session_user_factories import UserFactory, RefreshTokenFactory, UserSessionFactory
 
 
 @pytest.mark.asyncio

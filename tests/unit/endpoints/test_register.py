@@ -2,7 +2,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User
-from tests.factories import UserFactory
+from tests.factories.token_session_user_factories import UserFactory
+
 
 @pytest.mark.asyncio
 class TestUserRegistration:

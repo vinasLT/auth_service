@@ -5,6 +5,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models.verification_code import Destination, VerificationCode
+from tests.factories.token_session_user_factories import UserFactory
 
 
 @pytest.mark.asyncio

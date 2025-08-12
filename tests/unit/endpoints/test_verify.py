@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timezone, UTC, timedelta
+from datetime import datetime, timezone
 
 import uuid
 
