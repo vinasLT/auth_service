@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 6ce5cdf56385
+Revision ID: c2af9988bcc7
 Revises: 
-Create Date: 2025-08-12 20:50:51.032508
+Create Date: 2025-08-12 20:58:18.777472
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6ce5cdf56385'
+revision: str = 'c2af9988bcc7'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -75,19 +75,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_user_phone_number'), 'user', ['phone_number'], unique=False)
     op.create_index(op.f('ix_user_username'), 'user', ['username'], unique=False)
     op.create_index(op.f('ix_user_uuid_key'), 'user', ['uuid_key'], unique=True)
-    op.create_table('login_history',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=False),
-    sa.Column('login_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('success', sa.Boolean(), nullable=False),
-    sa.Column('ip_address', sa.String(length=45), nullable=True),
-    sa.Column('user_agent', sa.Text(), nullable=True),
-    sa.Column('device_info', sa.Text(), nullable=True),
-    sa.Column('location', sa.String(length=255), nullable=True),
-    sa.Column('failure_reason', sa.String(length=255), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('refresh_token',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('jti', sa.String(), nullable=False),
@@ -159,7 +146,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_refresh_token_jti'), table_name='refresh_token')
     op.drop_index(op.f('ix_refresh_token_id'), table_name='refresh_token')
     op.drop_table('refresh_token')
-    op.drop_table('login_history')
     op.drop_index(op.f('ix_user_uuid_key'), table_name='user')
     op.drop_index(op.f('ix_user_username'), table_name='user')
     op.drop_index(op.f('ix_user_phone_number'), table_name='user')
