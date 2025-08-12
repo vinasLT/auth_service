@@ -29,6 +29,7 @@ dependencies = [
     "pytest-asyncio (>=1.1.0,<2.0.0)",
     "factory-boy (>=3.3.3,<4.0.0)",
     "aio-pika (>=9.5.7,<10.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
 ]
 
 
