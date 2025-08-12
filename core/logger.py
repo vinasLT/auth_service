@@ -6,25 +6,16 @@ import os
 from config import settings
 
 
-class FileLogger:
+class ConsoleLogger:
     def __init__(
-        self,
-        service_name: str,
-        log_dir: str = "logs",
-        index_prefix: str = "logs",
-        environment: str = ""
+            self,
+            service_name: str,
+            environment: str = "",
+            include_extra: bool = True
     ) -> None:
         self.service_name = service_name
         self.environment = environment
-        self.index_prefix = index_prefix
-        os.makedirs(log_dir, exist_ok=True)
-        self.log_path = os.path.join(
-            log_dir,
-            f"{self.index_prefix}-{self.service_name}-{datetime.now(timezone.utc).strftime('%Y.%m.%d')}.jsonl"
-        )
-
-    def _make_index_name(self) -> str:
-        return os.path.basename(self.log_path)
+        self.include_extra = include_extra
 
     def sink(self, message) -> None:
         record = message.record
@@ -50,6 +41,8 @@ class FileLogger:
             },
             "time": record["time"].isoformat()
         }
+
+        # Добавляем exception если есть
         exc = record.get("exception")
         if exc and (exc.type or exc.value):
             doc["exception"] = {
@@ -57,28 +50,36 @@ class FileLogger:
                 "value": str(exc.value) if exc.value else None,
                 "traceback": exc.traceback or None
             }
-        extra = record.get("extra")
-        if extra:
-            doc["extra"] = extra
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(doc, ensure_ascii=False) + "\n")
+
+        # Добавляем extra данные если включено
+        if self.include_extra:
+            extra = record.get("extra")
+            if extra:
+                doc["extra"] = extra
+
+        # Выводим в консоль в формате JSON для Loki
+        print(json.dumps(doc, ensure_ascii=False))
 
 
 def setup_file_logging(
-    service_name: str,
-    environment: str,
-    log_dir: str = "logs",
-    level: str = "INFO"
+        service_name: str,
+        environment: str,
+        level: str = "INFO",
+        include_extra: bool = True
 ):
-    file_logger = FileLogger(
+    console_logger = ConsoleLogger(
         service_name=service_name,
-        log_dir=log_dir,
-        environment=environment
+        environment=environment,
+        include_extra=include_extra
     )
     loguru_logger.remove()
-    loguru_logger.add(file_logger.sink, format="{message}", level=level, backtrace=True, diagnose=True, enqueue=True)
+    loguru_logger.add(console_logger.sink, format="{message}", level=level, backtrace=True, diagnose=True, enqueue=True)
     return loguru_logger.bind(service=service_name, environment=environment)
 
-logger = setup_file_logging(service_name=settings.APP_NAME,
-                            environment="dev" if settings.DEBUG else "prod",
-                            level="DEBUG" if settings.DEBUG else "INFO")
+
+logger = setup_file_logging(
+    service_name=settings.APP_NAME,
+    environment="dev" if settings.DEBUG else "prod",
+    level="DEBUG" if settings.DEBUG else "INFO",
+    include_extra=True
+)
