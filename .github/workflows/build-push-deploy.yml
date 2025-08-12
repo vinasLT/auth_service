@@ -1,0 +1,74 @@
+name: CI/CD with Push vs PR Logic
+
+on:
+  push:
+    branches: [ main, develop ]
+
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run tests
+      run: |
+        echo "Running tests..."
+        pytest
+
+    - name: Code quality checks
+      run: |
+        echo "Running linting..."
+        flake8 .
+        black --check .
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy on server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          debug: true
+          script: |
+            set -x
+            echo "🔁 Pulling latest Docker image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:latest
+            
+            echo "📦 Composing up..."
+            cd /srv/vinaslt/deploy_conf
+            docker compose up -d --build
+
