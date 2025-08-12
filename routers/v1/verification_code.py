@@ -3,11 +3,13 @@ from rfc9457 import NotFoundProblem, BadRequestProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from code_service import CodeService
+from core.logger import logger
 from custom_exceptions import TooManyRequests
 from database.crud.user import UserService
 from database.crud.verification_code import VerificationCodeService
 from database.db.session import get_async_db
 from database.models.verification_code import Destination
+from database.schemas.user import UserUpdate
 from deps import get_rate_limiter, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
 from request_schemas.verification_code import CodeIn
@@ -29,8 +31,13 @@ async def send_code(user_uuid: str = Path(description='user uuid, retrieved afte
     if not user:
         raise NotFoundProblem(detail="User not found")
 
-    if not code_service.can_send_new_code(user_id=user.id, destination=destination):
-        raise TooManyRequests(detail=f"Wait before send new code, wait around 1 minute", title='Too many requests')
+
+    if not await code_service.can_send_new_code(user_id=user.id, destination=destination):
+        logger.debug('Wait before send new code, wait around 1 minute', extra={
+            "user_id": user.id,
+            "destination": destination
+        })
+        raise TooManyRequests(detail=f"Wait before send new code, wait around 1 minute", status=429, title='Too many requests')
 
     new_code = await code_service.create_code_with_deactivation(user_id=user.id, code=CodeService.generate_code(), destination=destination)
 
@@ -43,6 +50,7 @@ async def send_code(user_uuid: str = Path(description='user uuid, retrieved afte
                'expire_minutes': CodeService.CODE_EXPIRY_MINUTES,
                'phone_number': user.phone_number}
     await rabbit_mq_service.publish(routing_key="notification.auth.send_code", payload=payload)
+    logger.info(f'Code sent', extra=payload)
     return {"message": "Code sent"}
 
 @verification_code_router.post('/verify/{user_uuid}/{destination}', description="Verify a phone verification code",
@@ -60,7 +68,10 @@ async def verify_code(user_uuid: str = Path(description='user uuid, retrieved af
 
     if not await code_service.verify_code(user_id=user.id, code=code.code, destination=destination):
         raise BadRequestProblem(detail="Invalid code")
+
     else:
+        user_update = UserUpdate(email_verified=True)
+        await user_service.update(user.id, user_update)
         return {"message": "Code verified"}
 
 

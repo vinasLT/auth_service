@@ -82,7 +82,7 @@ class TestSendCode:
             code="123456",
             destination=Destination.EMAIL,
             created_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            expires_at=datetime.now(UTC) + timedelta(minutes=15),
             is_verified=True,
             uuid_key=str(uuid.uuid4())
         )
@@ -90,8 +90,9 @@ class TestSendCode:
         await session.commit()
 
         response = await client.post(f"v1/verification-code/{user.uuid_key}/email/send-code")
+        print(response.json())
 
-        assert response.status_code == 400
+        assert response.status_code == 429
         response_data = response.json()
         assert "Wait before send new code" in response_data.get("detail", "")
         mock_rabbit_mq.publish.assert_not_called()

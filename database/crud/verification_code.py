@@ -30,7 +30,7 @@ class VerificationCodeService(BaseService[VerificationCode, VerificationCodeCrea
         now = datetime.now(UTC)
 
         stmt = (
-            select(VerificationCode)
+            update(VerificationCode)
             .where(
                 VerificationCode.user_id == user_id,
                 VerificationCode.code == code,
@@ -38,21 +38,18 @@ class VerificationCodeService(BaseService[VerificationCode, VerificationCodeCrea
                 VerificationCode.is_verified == False,
                 VerificationCode.expires_at > now
             )
-            .order_by(VerificationCode.created_at.desc())
+            .values(
+                is_verified=True,
+                verified_at=now
+            )
+            .execution_options(synchronize_session=False)
         )
 
         result = await self.session.execute(stmt)
-        verification_record = result.scalars().first()
-
-        if not verification_record:
-            return False
-        verification_record.is_verified = True
-        verification_record.verified_at = now
-
-        return True
+        return result.rowcount == 1
 
     async def create_code_with_deactivation(self, user_id: int, code: str, destination: Destination,
-                                            expires_in_minutes: int = 15) -> VerificationCode:
+                                            expires_in_minutes: int = 10) -> VerificationCode:
         await self.deactivate_all_codes(user_id, destination)
 
         now = datetime.now(UTC)

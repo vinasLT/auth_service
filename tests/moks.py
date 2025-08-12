@@ -26,6 +26,12 @@ def mock_auth_service():
     })
 
     mock_service.refresh_token_ttl = 3600
+    # mock_service.get_payload_for_token = AsyncMock(return_value={
+    #     "sub": 'iochjn3iruehfcwiuehfw',
+    #     "email": 'example@email.com',
+    #     "jti": 'test_jti',
+    #     'token_family': 'test_token_family'
+    # })
 
     mock_service.get_payload_for_token = AsyncMock(side_effect=mock_get_payload_for_token)
 
@@ -46,12 +52,12 @@ def mock_rabbit_mq():
     return mock
 
 
-async def mock_get_payload_for_token(token_type, user_uuid, email, roles_permissions=None, token_family=None):
+async def mock_get_payload_for_token(token_type, user, roles_permissions=None, token_family=None):
     base_payload = {
         "iss": "test-issuer",
         "aud": "test-audience",
-        "sub": user_uuid,
-        "email": email,
+        "sub": user.uuid_key,
+        "email": user.email,
         "iat": datetime.now(timezone.utc),
         "exp": datetime.now(timezone.utc) + timedelta(seconds=3600 if token_type == "access" else 86400),
         "jti": str(uuid.uuid4()),

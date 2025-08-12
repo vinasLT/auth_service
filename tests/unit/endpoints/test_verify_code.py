@@ -477,6 +477,7 @@ class TestVerifyCode:
         ]
 
         responses = await asyncio.gather(*tasks, return_exceptions=True)
+        print(responses)
 
         # Только один запрос должен быть успешным
         successful_responses = [r for r in responses if not isinstance(r, Exception) and r.status_code == 200]
@@ -511,7 +512,7 @@ class TestVerifyCode:
 
         # Проверяем, что статус верификации обновился (если это делается в verify_code)
         await session.refresh(user)
-        # assert user.email_verified == True  # Раскомментируйте если логика есть
+        assert user.email_verified == True
 
     async def test_verify_code_service_integration(self, client: AsyncClient, session: AsyncSession):
         """Интеграционный тест с реальным сервисом (без моков)"""
@@ -520,8 +521,6 @@ class TestVerifyCode:
         await session.commit()
         await session.refresh(user)
 
-
-
         code_service = VerificationCodeService(session)
 
         created_code = await code_service.create_code_with_deactivation(
@@ -529,6 +528,7 @@ class TestVerifyCode:
             code="123456",
             destination=Destination.EMAIL
         )
+        print(created_code.created_at, created_code.expires_at)
 
         payload = {"code": "123456"}
         response = await client.post(
