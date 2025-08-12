@@ -11,17 +11,42 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Run tests
-      run: |
-        echo "Running tests..."
-        pytest
+      - uses: actions/checkout@v4
 
-    - name: Code quality checks
-      run: |
-        echo "Running linting..."
-        flake8 .
-        black --check .
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'  # или нужная вам версия
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Cache poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Run tests
+        run: |
+          echo "Running tests..."
+          poetry run pytest
+
+      - name: Code quality checks
+        run: |
+          echo "Running linting..."
+          poetry run flake8 .
+          poetry run black --check .
+  
 
   build:
     needs: test
