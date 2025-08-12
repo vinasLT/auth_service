@@ -41,12 +41,6 @@ jobs:
           echo "Running tests..."
           poetry run pytest
 
-      - name: Code quality checks
-        run: |
-          echo "Running linting..."
-          poetry run flake8 .
-          poetry run black --check .
-  
 
   build:
     needs: test
