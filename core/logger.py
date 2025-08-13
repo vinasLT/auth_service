@@ -3,7 +3,7 @@ from loguru import logger as loguru_logger
 import json
 import os
 
-from config import settings
+from config import settings, Environment
 
 
 class ConsoleLogger:
@@ -61,7 +61,7 @@ class ConsoleLogger:
         print(json.dumps(doc, ensure_ascii=False))
 
 
-def setup_file_logging(
+def setup_logging(
         service_name: str,
         environment: str,
         level: str = "INFO",
@@ -77,9 +77,9 @@ def setup_file_logging(
     return loguru_logger.bind(service=service_name, environment=environment)
 
 
-logger = setup_file_logging(
+logger = setup_logging(
     service_name=settings.APP_NAME,
-    environment="dev" if settings.DEBUG else "prod",
+    environment="dev" if settings.ENVIRONMENT == Environment.DEVELOPMENT else "prod",
     level="DEBUG" if settings.DEBUG else "INFO",
     include_extra=True
 )

@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Security, Request
-from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 from rfc9457 import UnauthorisedProblem
 
@@ -8,7 +7,8 @@ from security import get_current_user
 
 verify_request_router = APIRouter()
 
-@verify_request_router.api_route("/verify", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@verify_request_router.api_route("/verify", methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+                                 operation_id="verify_auth_request")
 async def verify_request(request: Request, payload: dict = Security(get_current_user)):
     try:
         original_method = request.headers.get("X-Forwarded-Method", "GET")

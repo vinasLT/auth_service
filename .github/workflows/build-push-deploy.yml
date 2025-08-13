@@ -60,12 +60,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push image
+      - name: Build and push multi-platform image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
-
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:latest
 
@@ -90,4 +90,3 @@ jobs:
             echo "📦 Composing up..."
             cd /srv/vinaslt/deploy_conf
             docker compose up -d --build
-

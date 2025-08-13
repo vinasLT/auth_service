@@ -1,9 +1,15 @@
+from enum import Enum
+
 from pydantic_settings import BaseSettings
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
+class Environment(str, Enum):
+    DEVELOPMENT = "development"
+    PRODUCTION = "production"
 
 class Settings(BaseSettings):
     # Database
@@ -32,6 +38,13 @@ class Settings(BaseSettings):
     APP_NAME: str = "auth-service"
     AUDIENCE: str = "web-api"
     DEBUG: bool = True
+    ROOT_PATH: str = ''
+    ENVIRONMENT: Environment = Environment.DEVELOPMENT
+
+    @property
+    def enable_docs(self) -> bool:
+        return self.ENVIRONMENT in [Environment.DEVELOPMENT]
+
 
     # RabbitMQ
     RABBITMQ_URL: str = "amqp://guest:guest@localhost/"
