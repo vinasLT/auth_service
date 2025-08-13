@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     DB_PORT: str = "5432"
     DB_NAME: str = "test_db"
     DB_USER: str = "postgres"
-    DB_PASSWORD: str = "testpass"
+    DB_PASS: str = "testpass"
 
 
     # Redis
