@@ -26,7 +26,7 @@ def upgrade() -> None:
     sa.Column('uuid_key', sa.String(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('code', sa.String(), nullable=False),
-    sa.Column('destination', sa.Enum('EMAIL', 'PHONE', name='destination'), nullable=False),
+    sa.Column('destination', sa.Enum('EMAIL', 'SMS', name='destination'), nullable=False),
     sa.Column('is_verified', sa.Boolean(), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),

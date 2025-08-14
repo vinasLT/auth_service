@@ -9,7 +9,7 @@ from database.models import Base
 
 class Destination(str, enum.Enum):
     EMAIL = "email"
-    PHONE = "sms"
+    SMS = "sms"
 
 
 class VerificationCode(Base):

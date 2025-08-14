@@ -253,7 +253,7 @@ class TestUserLogin:
 
         response = await client.post("v1/login", json=payload)
         assert response.status_code == 403
-        assert "Account is deactivated" in response.json()["detail"]
+        assert "Account deactivated" in response.json()["detail"]
 
     async def test_user_login_multiple_attempts_rate_limiting(self, client: AsyncClient):
         payload = {

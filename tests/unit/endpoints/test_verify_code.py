@@ -34,7 +34,7 @@ class TestVerifyCode:
 
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -56,7 +56,7 @@ class TestVerifyCode:
     #     verification_code = VerificationCodeFactory.build(
     #         user_id=user.id,
     #         code="654321",
-    #         destination=Destination.PHONE
+    #         destination=Destination.SMS
     #     )
     #     session.add(verification_code)
     #     await session.commit()
@@ -78,7 +78,7 @@ class TestVerifyCode:
         payload = {"code": "123456"}
 
         response = await client.post(
-            f"v1/verification-code/verify/{fake_uuid}/email",
+            f"v1/verification-code/{fake_uuid}/email/verify",
             json=payload
         )
 
@@ -104,7 +104,7 @@ class TestVerifyCode:
 
         payload = {"code": "wrong_"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
         print(response.json())
@@ -133,7 +133,7 @@ class TestVerifyCode:
 
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -160,7 +160,7 @@ class TestVerifyCode:
 
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -187,7 +187,7 @@ class TestVerifyCode:
         # Пытаемся верифицировать для SMS
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/phone",
+            f"v1/verification-code/{user.uuid_key}/sms/verify",
             json=payload
         )
 
@@ -204,7 +204,7 @@ class TestVerifyCode:
 
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/invalid_destination",
+            f"v1/verification-code/{user.uuid_key}/invalid_destination/verify",
             json=payload
         )
 
@@ -217,7 +217,7 @@ class TestVerifyCode:
         await session.commit()
         await session.refresh(user)
 
-        response = await client.post(f"v1/verification-code/verify/{user.uuid_key}/email")
+        response = await client.post(f"v1/verification-code/{user.uuid_key}/email/verify")
 
         assert response.status_code == 422  # Validation error - missing body
 
@@ -230,7 +230,7 @@ class TestVerifyCode:
 
         payload = {"code": ""}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -241,7 +241,7 @@ class TestVerifyCode:
         """Тест с некорректным форматом UUID"""
         payload = {"code": "123456"}
         response = await client.post(
-            "v1/verification-code/verify/invalid-uuid-format/email",
+            "v1/verification-code/invalid-uuid-format/email/verify",
             json=payload
         )
 
@@ -267,7 +267,7 @@ class TestVerifyCode:
         # Пытаемся верифицировать в нижнем регистре
         payload = {"code": "abc123"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -275,7 +275,7 @@ class TestVerifyCode:
         # Если коды case-sensitive, то должен быть 400
         # assert response.status_code == 400
 
-    @pytest.mark.parametrize("destination", ["email", "phone"])
+    @pytest.mark.parametrize("destination", ["email", "sms"])
     async def test_verify_code_different_destinations(self, client: AsyncClient, session: AsyncSession, destination):
         """Параметризованный тест для разных типов destination"""
         user = UserFactory.build(phone_number="1234567890", email="test@example.com")
@@ -287,14 +287,14 @@ class TestVerifyCode:
         verification_code = VerificationCodeFactory.build(
             user_id=user.id,
             code="123456",
-            destination=getattr(Destination, destination.upper())
+            destination=Destination.EMAIL if destination == 'email' else Destination.SMS
         )
         session.add(verification_code)
         await session.commit()
 
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/{destination}",
+            f"v1/verification-code/{user.uuid_key}/{destination}/verify",
             json=payload
         )
 
@@ -314,7 +314,7 @@ class TestVerifyCode:
         responses = []
         for i in range(16):  # Больше лимита
             response = await client.post(
-                f"v1/verification-code/verify/{user.uuid_key}/email",
+                f"v1/verification-code/{user.uuid_key}/email/verify",
                 json=payload
             )
             responses.append(response)
@@ -347,14 +347,14 @@ class TestVerifyCode:
 
         # Первая верификация должна быть успешной
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
         assert response.status_code == 200
 
         # Вторая верификация того же кода должна провалиться
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
         assert response.status_code == 400
@@ -382,7 +382,7 @@ class TestVerifyCode:
         # Пытаемся верифицировать код для второго пользователя
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user2.uuid_key}/email",
+            f"v1/verification-code/{user2.uuid_key}/email/verify",
             json=payload
         )
 
@@ -398,7 +398,7 @@ class TestVerifyCode:
 
         # Отправляем невалидный JSON
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             content="invalid json content",
             headers={"Content-Type": "application/json"}
         )
@@ -414,7 +414,7 @@ class TestVerifyCode:
 
         payload = {"not_code": "123456"}  # Неправильное поле
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -429,7 +429,7 @@ class TestVerifyCode:
 
         payload = {"code": None}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -445,7 +445,7 @@ class TestVerifyCode:
 
         payload = {"code": invalid_code}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -473,7 +473,7 @@ class TestVerifyCode:
 
         # Отправляем несколько одновременных запросов
         tasks = [
-            client.post(f"v1/verification-code/verify/{user.uuid_key}/email", json=payload)
+            client.post(f"v1/verification-code/{user.uuid_key}/email/verify", json=payload)
             for _ in range(3)
         ]
 
@@ -505,7 +505,7 @@ class TestVerifyCode:
 
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 
@@ -533,7 +533,7 @@ class TestVerifyCode:
 
         payload = {"code": "123456"}
         response = await client.post(
-            f"v1/verification-code/verify/{user.uuid_key}/email",
+            f"v1/verification-code/{user.uuid_key}/email/verify",
             json=payload
         )
 

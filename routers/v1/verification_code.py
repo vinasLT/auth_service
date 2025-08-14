@@ -36,7 +36,7 @@ async def send_code(
     sender = VerificationCodeSender(db, rabbit_mq_service)
     return await sender.send_code(user, destination, "auth.send_code")
 
-@verification_code_router.post('/verify/{user_uuid}/{destination}', description="Verify a phone verification code",
+@verification_code_router.post('/{user_uuid}/{destination}/verify', description="Verify a phone verification code",
                                dependencies=[get_rate_limiter(times=15, seconds=1800)])
 async def verify_code(user_uuid: str = Path(description='user uuid, retrieved after registration'),
                             destination: Destination = Path(description='from where you expect code'),
