@@ -1,3 +1,5 @@
+from enum import Enum
+
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -15,6 +17,10 @@ from rfc9457 import UnauthorisedProblem
 from auth.kms_sign import Signer
 from config import settings
 from database.models import User
+
+class TokenType(str, Enum):
+    REFRESH = "refresh"
+    ACCESS = "access"
 
 
 class AuthService(Signer):
@@ -105,12 +111,12 @@ class AuthService(Signer):
         return await self._encode_and_sign(payload)
 
 
-    async def get_payload_for_token(self, token_type: Literal["access", "refresh"], user: User,
+    async def get_payload_for_token(self, token_type: TokenType, user: User,
                                     roles_permissions: Dict[str, list[str]] = None,
                                     token_family:str = None) -> Dict[str, Any]:
-        if token_type == "access":
+        if token_type == TokenType.ACCESS:
             ttl_seconds = self.access_token_ttl
-        elif token_type == "refresh":
+        elif token_type == TokenType.REFRESH:
             ttl_seconds = self.refresh_token_ttl
         else:
             raise ValueError("Invalid token type")
@@ -130,7 +136,7 @@ class AuthService(Signer):
         }
 
 
-        if token_type == 'refresh':
+        if token_type == TokenType.REFRESH.value:
             if not token_family:
                 token_family = str(uuid.uuid4())
             payload.update({'token_family': token_family})
@@ -172,15 +178,15 @@ class AuthService(Signer):
 
     async def is_token_blacklisted(
             self,
-            token_type: Literal["access", "refresh"],
+            token_type: TokenType,
             jti: str
     ) -> bool:
-        redis_key = f"blacklist:{token_type}:{jti}"
+        redis_key = f"blacklist:{token_type.value}:{jti}"
         return await self.redis_client.exists(redis_key)
 
-    async def blacklist_token(self, token_type: Literal["access", "refresh"], jti: str) -> None:
-        key = f"blacklist:{token_type}:{jti}"
+    async def blacklist_token(self, token_type: TokenType, jti: str) -> None:
+        key = f"blacklist:{token_type.value}:{jti}"
         await self.redis_client.set(key, "blacklisted")
 
-        ttl = self.refresh_token_ttl if token_type == "refresh" else self.access_token_ttl
+        ttl = self.refresh_token_ttl if token_type == TokenType.REFRESH else self.access_token_ttl
         await self.redis_client.expire(key, ttl)

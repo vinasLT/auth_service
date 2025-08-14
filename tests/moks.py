@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import StaticPool
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
 
-from auth.service import AuthService
+from auth.service import AuthService, TokenType
 from deps import get_auth_service, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
 
@@ -64,9 +64,9 @@ async def mock_get_payload_for_token(token_type, user, roles_permissions=None, t
         "type": token_type,
     }
 
-    if token_type == "refresh":
+    if token_type == TokenType.REFRESH.value:
         base_payload["token_family"] = token_family or str(uuid.uuid4())
-    elif token_type == "access" and roles_permissions:
+    elif token_type == TokenType.ACCESS.value and roles_permissions:
         base_payload.update(roles_permissions)
 
     return base_payload

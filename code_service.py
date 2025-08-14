@@ -1,3 +1,13 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+import secrets
+from core.logger import logger
+from custom_exceptions import TooManyRequests
+from database.crud.verification_code import VerificationCodeService
+from database.models import User
+from database.models.verification_code import Destination
+from rabbit_service.service import RabbitMQPublisher
+
+
 class CodeService:
     CODE_LENGTH = 6
     CODE_EXPIRY_MINUTES = 10
@@ -6,9 +16,50 @@ class CodeService:
         self.user_uuid = user_uuid
 
     @classmethod
-    def generate_code(cls)->str:
-        import random
-        return ''.join(random.choices('0123456789', k=cls.CODE_LENGTH))
+    def generate_code(cls) -> str:
+        return ''.join(secrets.choice('0123456789') for _ in range(cls.CODE_LENGTH))
+
+
+class VerificationCodeSender:
+    def __init__(self, db: AsyncSession, rabbit_mq_service: RabbitMQPublisher):
+        self.db = db
+        self.rabbit_mq_service = rabbit_mq_service
+        self.code_service = VerificationCodeService(db)
+
+    async def send_code(self, user: User, destination: Destination, routing_key: str):
+        if not await self.code_service.can_send_new_code(user_id=user.id, destination=destination):
+            logger.debug('Wait before send new code, wait around 1 minute', extra={
+                "user_id": user.id,
+                "destination": destination
+            })
+            raise TooManyRequests(
+                detail="Wait before send new code, wait around 1 minute",
+                status=429,
+                title='Too many requests'
+            )
+
+        new_code = await self.code_service.create_code_with_deactivation(
+            user_id=user.id,
+            code=CodeService.generate_code(),
+            destination=destination
+        )
+
+        payload = {
+            "user_uuid": user.uuid_key,
+            'code': new_code.code,
+            'destination': destination,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'email': user.email,
+            'expire_minutes': CodeService.CODE_EXPIRY_MINUTES,
+            'phone_number': user.phone_number
+        }
+
+        # Отправка в очередь
+        await self.rabbit_mq_service.publish(routing_key=routing_key, payload=payload)
+        logger.info(f'Code sent', extra=payload)
+
+        return {"message": "Code sent"}
 
 
 

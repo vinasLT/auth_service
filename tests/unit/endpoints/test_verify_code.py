@@ -111,6 +111,7 @@ class TestVerifyCode:
 
         assert response.status_code == 400
         response_data = response.json()
+        print(response_data)
         assert "Invalid code" in response_data.get("detail", "")
 
     async def test_verify_code_expired_code(self, client: AsyncClient, session: AsyncSession):

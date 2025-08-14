@@ -4,6 +4,7 @@ from .role import Role
 from database.models.many_to_many.user_role import UserRole
 from .permission import Permission
 from .refresh_token import RefreshToken
+from .verification_code import VerificationCode
 from .singing_key import SingingKey
 from .user_session import UserSession
 from .many_to_many.user_role import UserRole

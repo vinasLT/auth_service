@@ -1,7 +1,9 @@
 import re
 from typing import Annotated
 
-from pydantic import StringConstraints, BaseModel, EmailStr, Field, field_validator, ConfigDict
+from pydantic import StringConstraints, BaseModel, EmailStr, Field, field_validator
+
+from request_schemas.validators.password import password_complexity_validator
 
 PasswordStr = Annotated[
     str,
@@ -12,12 +14,20 @@ PasswordStr = Annotated[
     )
 ]
 
-class EmailPassIn(BaseModel):
+class EmailIn(BaseModel):
     email: EmailStr = Field(
         ...,
         description="User email address",
         json_schema_extra={"example": "user@example.com"}
     )
+
+    @field_validator('email')
+    @classmethod
+    def validate_email_ascii(cls, v):
+        assert re.match(r'^[\x00-\x7F]+$', v), 'Email must be ASCII only'
+        return v.lower()
+
+class PasswordIn(BaseModel):
     password: PasswordStr = Field(
         ...,
         description="Password must be 8-32 chars, include upper, lower, digit, special, no spaces",
@@ -27,18 +37,14 @@ class EmailPassIn(BaseModel):
     @field_validator('password')
     @classmethod
     def password_complexity(cls, v):
-        assert not any(c.isspace() for c in v), 'Password must not contain spaces'
-        assert re.search(r'[a-z]', v), 'Password must include at least one lowercase letter'
-        assert re.search(r'[A-Z]', v), 'Password must include at least one uppercase letter'
-        assert re.search(r'\d', v), 'Password must include at least one digit'
-        assert re.search(r'[^A-Za-z0-9]', v), 'Password must include at least one special character'
-        return v
+        return password_complexity_validator(v)
 
-    @field_validator('email')
-    @classmethod
-    def validate_email_ascii(cls, v):
-        assert re.match(r'^[\x00-\x7F]+$', v), 'Email must be ASCII only'
-        return v.lower()
+
+
+class EmailPassIn(EmailIn, PasswordIn):
+    pass
+
+
 
 class UserIn(EmailPassIn):
     phone_number: str = Field(
@@ -75,14 +81,4 @@ class UserIn(EmailPassIn):
         json_schema_extra={"example": "Doe"},
         min_length=1,
         max_length=32,
-    )
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "email": "user@example.com",
-                'phone_number': '+1234567890',
-                "password": "Str0ng!Pass1"
-            }
-        }
     )

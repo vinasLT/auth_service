@@ -1,4 +1,4 @@
-from rfc9457 import ConflictProblem, Problem, UnauthorisedProblem
+from rfc9457 import ConflictProblem, Problem, UnauthorisedProblem, ForbiddenProblem, BadRequestProblem
 from fastapi import Request, Response
 
 class RegisteredWithPresentCredentialsProblem(ConflictProblem):
@@ -20,3 +20,15 @@ async def raise_rate_limiter_error(request: Request, response: Response, pexpire
 class EmailNotVerifiedProblem(UnauthorisedProblem):
     type = "email-not-verified"
     title = "Email not verified"
+
+class PhoneNotVerifiedProblem(UnauthorisedProblem):
+    type = "phone-not-verified"
+    title = "Phone not verified"
+
+class UserDeactivatedProblem(ForbiddenProblem):
+    type = "user-deactivated"
+    title = "User deactivated"
+
+class InvalidCodeProblem(BadRequestProblem):
+    type = "invalid-code"
+    title = "Invalid code"

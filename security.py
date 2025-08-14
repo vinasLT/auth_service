@@ -4,7 +4,7 @@ from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from rfc9457 import UnauthorisedProblem
 
-from auth.service import AuthService
+from auth.service import AuthService, TokenType
 
 from deps import get_auth_service
 
@@ -22,7 +22,7 @@ async def get_current_user(
     if not payload:
         raise UnauthorisedProblem(detail="Invalid token")
 
-    is_blacklisted = await auth_service.is_token_blacklisted('access', str(payload.get("jti")))
+    is_blacklisted = await auth_service.is_token_blacklisted(TokenType.ACCESS, str(payload.get("jti")))
     if is_blacklisted:
         raise UnauthorisedProblem(detail="Token revoked")
 

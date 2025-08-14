@@ -27,10 +27,9 @@ class TestSendCode:
         assert response.status_code == 200
         assert response.json() == {"message": "Code sent"}  # Исправлено на правильный ответ
 
-        # Проверяем, что RabbitMQ был вызван с правильными параметрами
         mock_rabbit_mq.publish.assert_called_once()
         call_args = mock_rabbit_mq.publish.call_args
-        assert call_args[1]["routing_key"] == "notification.auth.send_code"
+        assert call_args[1]["routing_key"] == "auth.send_code"
 
         payload = call_args[1]["payload"]
         assert payload["user_uuid"] == user.uuid_key

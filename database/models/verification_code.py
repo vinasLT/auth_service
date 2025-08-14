@@ -7,9 +7,9 @@ from sqlalchemy.testing.schema import mapped_column
 
 from database.models import Base
 
-class Destination(enum.Enum):
+class Destination(str, enum.Enum):
     EMAIL = "email"
-    PHONE = "phone"
+    PHONE = "sms"
 
 
 class VerificationCode(Base):

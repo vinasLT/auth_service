@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 import redis
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi_limiter import FastAPILimiter
 
 from config import settings
@@ -9,6 +9,7 @@ from core.logger import logger
 from routers.v1.auth import auth_v1_router
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
 
+from routers.v1.password_reset import password_reset_router
 from routers.v1.verification_code import verification_code_router
 from routers.v1.verify import verify_request_router
 
@@ -40,9 +41,13 @@ app = FastAPI(
 eh = new_exception_handler()
 add_exception_handler(app, eh)
 
-app.include_router(auth_v1_router, prefix="/v1", tags=["auth"])
-app.include_router(verify_request_router, prefix="/v1", tags=["internal"])
-app.include_router(verification_code_router, prefix="/v1/verification-code", tags=["verification-code"])
+v1_router = APIRouter()
+v1_router.include_router(auth_v1_router, tags=["auth"])
+v1_router.include_router(verify_request_router, tags=["internal"])
+v1_router.include_router(verification_code_router, prefix="/verification-code", tags=["verification-code"])
+v1_router.include_router(password_reset_router, prefix="/password-reset", tags=["password-reset"])
+
+app.include_router(v1_router, prefix="/v1")
 
 
 @app.get("/health")

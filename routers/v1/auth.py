@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, UTC, timedelta
 import uuid
 
-from auth.service import AuthService
+from auth.service import AuthService, TokenType
+from base_checks import check_user
 from core.logger import logger
 
-from custom_exceptions import RegisteredWithPresentCredentialsProblem, EmailNotVerifiedProblem
+from custom_exceptions import RegisteredWithPresentCredentialsProblem, EmailNotVerifiedProblem, UserDeactivatedProblem
 from database.crud.many_to_many.user_role import UserRoleService
 from database.crud.refresh_token import RefreshTokenService
 from database.crud.role import RoleService
@@ -172,28 +173,7 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
             })
             raise UnauthorisedProblem(detail="Invalid email or password")
 
-        if not user.is_active:
-            logger.warning(f'Login failed - account deactivated', extra={
-                "email": credentials.email,
-                "user_id": user.id,
-                "ip_address": ip_address
-            })
-            raise ForbiddenProblem(detail="Account is deactivated")
-
-        if not user.email_verified:
-            logger.warning(f'Login failed - email not verified', extra={
-                "email": credentials.email,
-                "user_id": user.id,
-            })
-            raise EmailNotVerifiedProblem(
-                detail="Email not verified",
-                user_info={
-                    "user_id": user.id,
-                    "user_uuid": user.uuid_key,
-                    "email": user.email,
-                    "email_verified": user.email_verified
-                }
-            )
+        check_user(user)
 
         if not auth_service.verify_password(credentials.password, str(user.password_hash)):
             logger.warning(f'Login failed - invalid password', extra={
@@ -213,11 +193,11 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
         access_token_payload = await auth_service.get_payload_for_token(
             user=user,
             roles_permissions=roles_permissions,
-            token_type="access"
+            token_type=TokenType.ACCESS
         )
         refresh_token_payload = await auth_service.get_payload_for_token(
             user=user,
-            token_type="refresh"
+            token_type=TokenType.REFRESH
         )
 
         logger.debug(f'Creating refresh token record', extra={
@@ -306,7 +286,7 @@ async def refresh_token_pair(
             "user_uuid": payload.get("sub")
         })
 
-        if not presented_jti or await auth_service.is_token_blacklisted('refresh', presented_jti):
+        if not presented_jti or await auth_service.is_token_blacklisted(TokenType.REFRESH, presented_jti):
             logger.warning(f'Refresh failed - token blacklisted or invalid', extra={
                 "jti": presented_jti
             })
@@ -370,19 +350,19 @@ async def refresh_token_pair(
                 "expected_jti": last.jti if last else None
             })
             await refresh_token_service.revoke_family(family_id)
-            await auth_service.blacklist_token('refresh', presented_jti)
+            await auth_service.blacklist_token(TokenType.REFRESH, presented_jti)
             raise UnauthorisedProblem(detail="Refresh token reuse detected")
 
         now = datetime.now(UTC)
         new_refresh_payload = await auth_service.get_payload_for_token(
             user=user,
-            token_type="refresh",
+            token_type=TokenType.REFRESH,
             token_family=family_id
         )
         new_access_payload = await auth_service.get_payload_for_token(
             user=user,
             roles_permissions=roles_permissions,
-            token_type="access"
+            token_type=TokenType.ACCESS
         )
 
         logger.debug(f'Rotating refresh token', extra={
@@ -405,7 +385,7 @@ async def refresh_token_pair(
         access_token = await auth_service.generate_token(new_access_payload)
         refresh_token = await auth_service.generate_token(new_refresh_payload)
 
-        await auth_service.blacklist_token('refresh', presented_jti)
+        await auth_service.blacklist_token(TokenType.REFRESH, presented_jti)
 
         logger.info(f'Token refresh successful', extra={
             "user_id": user.id,
@@ -458,8 +438,8 @@ async def logout(
         })
 
         # Blacklist both tokens
-        await auth_service.blacklist_token('access', access_jti)
-        await auth_service.blacklist_token('refresh', refresh_jti)
+        await auth_service.blacklist_token(TokenType.ACCESS, access_jti)
+        await auth_service.blacklist_token(TokenType.REFRESH, refresh_jti)
 
         logger.debug(f'Tokens blacklisted, updating session', extra={
             "access_jti": access_jti,

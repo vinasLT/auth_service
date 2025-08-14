@@ -2,6 +2,9 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 
+from redis.commands.search.querystring import BaseNode
+
+
 class UserCreate(BaseModel):
     uuid_key: str
     password_hash: str
@@ -17,6 +20,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     phone_verified: Optional[bool] = False
     email_verified: Optional[bool] = False
+    password_hash: Optional[str] = None
 
 class UserRead(BaseModel):
     id: int
