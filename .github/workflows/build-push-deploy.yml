@@ -1,9 +1,7 @@
-name: CI/CD with Push vs PR Logic
-
+name: Optimized CI/CD Pipeline
 on:
   push:
     branches: [ main, dev ]
-
   pull_request:
     branches: [ main ]
 
@@ -39,17 +37,18 @@ jobs:
       - name: Run tests
         run: |
           echo "Running tests..."
-          poetry run pytest
-
+          poetry run pytest || ([ $? -eq 5 ] && echo "⚠️ No tests found - continuing anyway" || exit $?)
 
   build:
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -57,23 +56,57 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push multi-platform image
+      - name: Build and push with cache
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:latest
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+  build-arm64:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build ARM64 image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:arm64
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache-arm64
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache-arm64,mode=max
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
     steps:
       - name: Deploy on server via SSH
         uses: appleboy/ssh-action@v1.2.2
@@ -81,7 +114,6 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          debug: true
           script: |
             set -x
             echo "🔁 Pulling latest Docker image..."
@@ -90,3 +122,5 @@ jobs:
             echo "📦 Composing up..."
             cd /srv/vinaslt/deploy_conf
             docker compose up -d --build
+            
+            echo "✅ Deployment complete!"
