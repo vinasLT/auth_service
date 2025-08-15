@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from database.crud.verification_code import VerificationCodeService
-from database.models.verification_code import Destination
+from database.models.verification_code import Destination, VerificationCodeRoutingKey
 from tests.factories.token_session_user_factories import UserFactory
 from tests.factories.verefication_token import VerificationCodeFactory
 
@@ -527,7 +527,8 @@ class TestVerifyCode:
         created_code = await code_service.create_code_with_deactivation(
             user_id=user.id,
             code="123456",
-            destination=Destination.EMAIL
+            destination=Destination.EMAIL,
+            routing_key=VerificationCodeRoutingKey.ACCOUNT_VERIFICATION,
         )
         print(created_code.created_at, created_code.expires_at)
 

@@ -4,7 +4,7 @@ from datetime import datetime, UTC, timedelta
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models.verification_code import Destination, VerificationCode
+from database.models.verification_code import Destination, VerificationCode, VerificationCodeRoutingKey
 from tests.factories.token_session_user_factories import UserFactory
 
 
@@ -80,6 +80,7 @@ class TestSendCode:
             user_id=user.id,
             code="123456",
             destination=Destination.EMAIL,
+            routing_key=VerificationCodeRoutingKey.ACCOUNT_VERIFICATION,
             created_at=datetime.now(UTC),
             expires_at=datetime.now(UTC) + timedelta(minutes=15),
             is_verified=True,
