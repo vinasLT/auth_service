@@ -11,6 +11,9 @@ class Destination(str, enum.Enum):
     EMAIL = "email"
     SMS = "sms"
 
+class VerificationCodeRoutingKey(str, enum.Enum):
+    ACCOUNT_VERIFICATION = "auth.send_code"
+    PASSWORD_RESET = "auth.reset_password"
 
 class VerificationCode(Base):
     __tablename__ = 'verification_code'
@@ -22,7 +25,7 @@ class VerificationCode(Base):
 
     code: Mapped[str] = mapped_column(String, nullable=False)
     destination: Mapped[Destination] = mapped_column(Enum(Destination), nullable=False)
-
+    routing_key: Mapped[str] = mapped_column(Enum(VerificationCodeRoutingKey), nullable=False)
     is_verified: Mapped[bool] = mapped_column(default=False)
 
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

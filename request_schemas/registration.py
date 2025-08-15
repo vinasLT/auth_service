@@ -3,6 +3,7 @@ from typing import Annotated
 
 from pydantic import StringConstraints, BaseModel, EmailStr, Field, field_validator
 
+from request_schemas.validators.email import validate_email
 from request_schemas.validators.password import password_complexity_validator
 
 PasswordStr = Annotated[
@@ -24,8 +25,7 @@ class EmailIn(BaseModel):
     @field_validator('email')
     @classmethod
     def validate_email_ascii(cls, v):
-        assert re.match(r'^[\x00-\x7F]+$', v), 'Email must be ASCII only'
-        return v.lower()
+        return validate_email(v)
 
 class PasswordIn(BaseModel):
     password: PasswordStr = Field(

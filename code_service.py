@@ -4,7 +4,7 @@ from core.logger import logger
 from custom_exceptions import TooManyRequests
 from database.crud.verification_code import VerificationCodeService
 from database.models import User
-from database.models.verification_code import Destination
+from database.models.verification_code import Destination, VerificationCodeRoutingKey
 from rabbit_service.service import RabbitMQPublisher
 
 
@@ -26,7 +26,7 @@ class VerificationCodeSender:
         self.rabbit_mq_service = rabbit_mq_service
         self.code_service = VerificationCodeService(db)
 
-    async def send_code(self, user: User, destination: Destination, routing_key: str):
+    async def send_code(self, user: User, destination: Destination, routing_key: VerificationCodeRoutingKey):
         if not await self.code_service.can_send_new_code(user_id=user.id, destination=destination):
             logger.debug('Wait before send new code, wait around 1 minute', extra={
                 "user_id": user.id,
@@ -38,10 +38,12 @@ class VerificationCodeSender:
                 title='Too many requests'
             )
 
+
         new_code = await self.code_service.create_code_with_deactivation(
             user_id=user.id,
             code=CodeService.generate_code(),
-            destination=destination
+            destination=destination,
+            routing_key=routing_key
         )
 
         payload = {
@@ -55,8 +57,7 @@ class VerificationCodeSender:
             'phone_number': user.phone_number
         }
 
-        # Отправка в очередь
-        await self.rabbit_mq_service.publish(routing_key=routing_key, payload=payload)
+        await self.rabbit_mq_service.publish(routing_key=routing_key.value, payload=payload)
         logger.info(f'Code sent', extra=payload)
 
         return {"message": "Code sent"}

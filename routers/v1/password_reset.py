@@ -17,7 +17,7 @@ from request_schemas.password_reset import ResetPasswordIn
 password_reset_router = APIRouter()
 
 @password_reset_router.post("", response_model=UserRead,
-                            status_code=201,
+                            status_code=200,
                             summary="Password reset by email request",
                             description="Password reset by email request",
                             dependencies=[get_rate_limiter(times=15, seconds=120)])

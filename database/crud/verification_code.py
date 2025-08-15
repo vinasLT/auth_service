@@ -4,7 +4,7 @@ from datetime import datetime, UTC, timedelta
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.crud.base import BaseService
-from database.models.verification_code import VerificationCode, Destination
+from database.models.verification_code import VerificationCode, Destination, VerificationCodeRoutingKey
 from database.schemas.verification_code import VerificationCodeCreate, VerificationCodeUpdate
 
 
@@ -48,7 +48,7 @@ class VerificationCodeService(BaseService[VerificationCode, VerificationCodeCrea
         result = await self.session.execute(stmt)
         return result.rowcount == 1
 
-    async def create_code_with_deactivation(self, user_id: int, code: str, destination: Destination,
+    async def create_code_with_deactivation(self, user_id: int, code: str, destination: Destination, routing_key:VerificationCodeRoutingKey,
                                             expires_in_minutes: int = 10) -> VerificationCode:
         await self.deactivate_all_codes(user_id, destination)
 
@@ -58,6 +58,7 @@ class VerificationCodeService(BaseService[VerificationCode, VerificationCodeCrea
             user_id=user_id,
             code=code,
             destination=destination,
+            routing_key=routing_key,
             expires_at=now + timedelta(minutes=expires_in_minutes),
             created_at=now
         )

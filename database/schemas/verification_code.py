@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
-from database.models.verification_code import Destination
+from database.models.verification_code import Destination, VerificationCodeRoutingKey
 
 
 class VerificationCodeCreate(BaseModel):
@@ -10,6 +10,7 @@ class VerificationCodeCreate(BaseModel):
     code: str
     uuid_key: str
     destination: Destination
+    routing_key: VerificationCodeRoutingKey
     is_verified: Optional[bool] = False
     expires_at: datetime
     created_at: Optional[datetime] = None
@@ -20,6 +21,7 @@ class VerificationCodeUpdate(BaseModel):
     uuid_key: Optional[str] = None
     code: Optional[str] = None
     destination: Optional[Destination] = None
+    routing_key: Optional[VerificationCodeRoutingKey] = None
     is_verified: Optional[bool] = None
     expires_at: Optional[datetime] = None
     created_at: Optional[datetime] = None

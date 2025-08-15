@@ -8,7 +8,7 @@ from custom_exceptions import TooManyRequests, InvalidCodeProblem
 from database.crud.user import UserService
 from database.crud.verification_code import VerificationCodeService
 from database.db.session import get_async_db
-from database.models.verification_code import Destination
+from database.models.verification_code import Destination, VerificationCodeRoutingKey
 from database.schemas.user import UserUpdate
 from deps import get_rate_limiter, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
@@ -34,7 +34,7 @@ async def send_code(
         raise NotFoundProblem(detail="User not found")
 
     sender = VerificationCodeSender(db, rabbit_mq_service)
-    return await sender.send_code(user, destination, "auth.send_code")
+    return await sender.send_code(user, destination, VerificationCodeRoutingKey.ACCOUNT_VERIFICATION)
 
 @verification_code_router.post('/{user_uuid}/{destination}/verify', description="Verify a phone verification code",
                                dependencies=[get_rate_limiter(times=15, seconds=1800)])
@@ -62,7 +62,7 @@ async def verify_code(user_uuid: str = Path(description='user uuid, retrieved af
         return {"message": "Code verified"}
 
 
-@verification_code_router.post("/email/send-code",
+@verification_code_router.post("/email/send-reset-pass-code",
                                description="Send an email verification code to the user",
                                dependencies=[get_rate_limiter(times=4, seconds=1800)])
 async def send_email_code(
@@ -77,7 +77,7 @@ async def send_email_code(
         raise NotFoundProblem(detail="User not found")
 
     sender = VerificationCodeSender(db, rabbit_mq_service)
-    return await sender.send_code(user, Destination.EMAIL, "auth.send_email_code")
+    return await sender.send_code(user, Destination.EMAIL, VerificationCodeRoutingKey.PASSWORD_RESET)
 
 
 

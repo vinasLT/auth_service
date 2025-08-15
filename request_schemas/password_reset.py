@@ -24,7 +24,9 @@ class ResetPasswordIn(EmailIn, CodeIn):
         return password_complexity_validator(v)
 
     @model_validator(mode='before')
-    def passwords_match(self):
-        if self.new_password1 != self.new_password2:
-            raise PydanticCustomError('passwords_doesnt_match','Passwords do not match')
-        return self
+    @classmethod
+    def passwords_match(cls, values):
+        if values.get('new_password1') != values.get('new_password2'):
+            raise PydanticCustomError('passwords_doesnt_match', 'Passwords do not match')
+        return values
+
