@@ -48,8 +48,10 @@ jobs:
         include:
           - runner: ubuntu-latest
             platform: linux/amd64
+            cache-tag: amd64
           - runner: ubuntu-24.04-arm  # Нативный ARM раннер (БЕСПЛАТНО для публичных репо!)
             platform: linux/arm64
+            cache-tag: arm64
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
@@ -72,8 +74,8 @@ jobs:
           file: Dockerfile
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service,push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache-${{ matrix.platform }}
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache-${{ matrix.platform }},mode=max
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache-${{ matrix.cache-tag }}
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service:buildcache-${{ matrix.cache-tag }},mode=max
 
       - name: Export digest
         run: |
@@ -84,7 +86,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.platform }}
+          name: digests-${{ matrix.cache-tag }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
