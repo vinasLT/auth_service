@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from loguru import logger as loguru_logger
 import json
-import os
 
 from config import settings, Environment
 
