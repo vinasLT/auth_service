@@ -21,9 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Poetry with better timeout handling
 RUN pip install --no-cache-dir --timeout=300 poetry
 
-# Configure Poetry for better stability
-RUN poetry config installer.max-workers 1 && \
-    poetry config experimental.new-installer false
 
 WORKDIR /app
 
