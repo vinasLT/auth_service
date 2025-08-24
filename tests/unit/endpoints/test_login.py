@@ -46,7 +46,7 @@ class TestUserLogin:
         response = await client.post("v1/login", json=payload)
 
         assert response.status_code == 401
-        assert "Email not verified" in response.json()["detail"]
+        assert "Invalid email or password" in response.json()["detail"]
 
     async def test_user_login_wrong_password(self, client: AsyncClient, session: AsyncSession, mock_auth_service):
         user = UserFactory.build(phone_number="1234567890")

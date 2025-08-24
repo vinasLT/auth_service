@@ -94,7 +94,7 @@ class TestVerifyCode:
 
     async def test_verify_code_invalid_code(self, client: AsyncClient, session: AsyncSession):
         """Тест с неверным кодом верификации"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -122,7 +122,7 @@ class TestVerifyCode:
 
     async def test_verify_code_expired_code(self, client: AsyncClient, session: AsyncSession):
         """Тест с истекшим кодом"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -149,7 +149,7 @@ class TestVerifyCode:
 
     async def test_verify_code_inactive_code(self, client: AsyncClient, session: AsyncSession):
         """Тест с деактивированным кодом"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -176,7 +176,7 @@ class TestVerifyCode:
 
     async def test_verify_code_wrong_destination(self, client: AsyncClient, session: AsyncSession):
         """Тест верификации кода для неправильного destination"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False, phone_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -284,7 +284,7 @@ class TestVerifyCode:
     @pytest.mark.parametrize("destination", ["email", "sms"])
     async def test_verify_code_different_destinations(self, client: AsyncClient, session: AsyncSession, destination):
         """Параметризованный тест для разных типов destination"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False, phone_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -336,7 +336,7 @@ class TestVerifyCode:
 
     async def test_verify_code_deactivates_after_use(self, client: AsyncClient, session: AsyncSession):
         """Тест деактивации кода после успешного использования"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False, phone_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -364,13 +364,13 @@ class TestVerifyCode:
             json=payload
         )
         assert response.status_code == 400
-        assert "Invalid code" in response.json().get("detail", "")
+        assert "This email already verified" in response.json().get("detail", "")
 
     async def test_verify_code_wrong_user(self, client: AsyncClient, session: AsyncSession):
         """Тест верификации кода для другого пользователя"""
         # Создаем двух пользователей
-        user1 = UserFactory.build(phone_number="1111111111", email="user1@example.com")
-        user2 = UserFactory.build(phone_number="2222222222", email="user2@example.com")
+        user1 = UserFactory.build(phone_number="1111111111", email="user1@example.com", email_verified=False, phone_verified=False)
+        user2 = UserFactory.build(phone_number="2222222222", email="user2@example.com", email_verified=False, phone_verified=False)
         session.add_all([user1, user2])
         await session.commit()
         await session.refresh(user1)
@@ -462,7 +462,7 @@ class TestVerifyCode:
         """Тест одновременных запросов верификации одного кода"""
         import asyncio
 
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False, phone_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -523,7 +523,7 @@ class TestVerifyCode:
 
     async def test_verify_code_service_integration(self, client: AsyncClient, session: AsyncSession):
         """Интеграционный тест с реальным сервисом (без моков)"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False, phone_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)

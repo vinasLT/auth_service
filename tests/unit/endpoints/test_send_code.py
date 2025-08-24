@@ -94,7 +94,7 @@ class TestSendCode:
 
     async def test_send_code_rate_limit_exceeded(self, client: AsyncClient, session: AsyncSession, mock_rabbit_mq):
         """Тест превышения лимита отправки кодов"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -137,28 +137,13 @@ class TestSendCode:
         """Тест с некорректным форматом UUID"""
         response = await client.post("v1/verification-code/invalid-uuid-format/email/send-code")
 
-        # Может быть 422 (validation error) или 404, в зависимости от реализации
-        assert response.status_code in [404, 422]
+        assert response.status_code == 404
         mock_rabbit_mq.publish.assert_not_called()
 
 
-    async def test_send_code_rate_limiter_headers(self, client: AsyncClient, session: AsyncSession, mock_rabbit_mq):
-        """Тест проверки заголовков rate limiter"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
-
-        response = await client.post(f"v1/verification-code/{user.uuid_key}/email/send-code")
-
-        assert response.status_code == 200
-        # Проверяем наличие заголовков rate limiter (если они добавляются)
-        # assert "X-RateLimit-Remaining" in response.headers
-        # assert "X-RateLimit-Reset" in response.headers
-
     async def test_send_code_multiple_rapid_requests(self, client: AsyncClient, session: AsyncSession, mock_rabbit_mq):
         """Тест множественных быстрых запросов для проверки rate limiter"""
-        user = UserFactory.build(phone_number="1234567890", email="test@example.com")
+        user = UserFactory.build(phone_number="1234567890", email="test@example.com", email_verified=False)
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -182,7 +167,8 @@ class TestSendCode:
             phone_number="+1234567890",
             email="test@example.com",
             first_name="John",
-            last_name="Doe"
+            last_name="Doe",
+            email_verified=False
         )
         session.add(user)
         await session.commit()

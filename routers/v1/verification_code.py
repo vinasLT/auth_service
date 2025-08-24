@@ -29,6 +29,8 @@ async def send_code(
 ):
     user_service = UserService(db)
     user = await user_service.get_user_by_uuid(user_uuid)
+    if not user:
+        raise NotFoundProblem(detail="User not found")
 
     if destination == Destination.EMAIL:
         verified_email = await user_service.get_by_email(user.email)
@@ -40,8 +42,7 @@ async def send_code(
             raise BadRequestProblem(detail="This phone number already verified")
 
 
-    if not user:
-        raise NotFoundProblem(detail="User not found")
+
 
     sender = VerificationCodeSender(db, rabbit_mq_service)
     return await sender.send_code(user, destination, VerificationCodeRoutingKey.ACCOUNT_VERIFICATION)
