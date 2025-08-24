@@ -28,23 +28,68 @@ class TestUserRegistration:
 
         assert response.status_code == 409
 
-    async def test_if_user_register_but_not_verify_email(self, client, session):
-        new_user = UserFactory.build(email_verified=False, phone_verified=False)
-        session.add(new_user)
+    async def _create_user(self, session, **kwargs):
+        user = UserFactory.build(**kwargs)
+        session.add(user)
         await session.commit()
-        await session.refresh(
-            new_user
-        )
-        payload = {
-            "email": new_user.email,
-            "phone_number": new_user.phone_number,
-            "password": "StrongPass!2",
-            "first_name": new_user.first_name,
-            "last_name": new_user.last_name,
+        await session.refresh(user)
+        return user
+
+    async def _create_users(self, session, users_data):
+        users = []
+        for user_kwargs in users_data:
+            user = UserFactory.build(**user_kwargs)
+            session.add(user)
+            users.append(user)
+
+        await session.commit()
+
+        for user in users:
+            await session.refresh(user)
+
+        return users
+
+    def _get_registration_payload(self, user, password="StrongPass!2"):
+        return {
+            "email": user.email,
+            "phone_number": user.phone_number,
+            "password": password,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
         }
 
-        response = await client.post("v1/register", json=payload)
-        assert response.status_code == 409
+    async def _register_user(self, client, user, password="StrongPass!2"):
+        payload = self._get_registration_payload(user, password)
+        return await client.post("v1/register", json=payload)
+
+    @pytest.mark.parametrize("email_verified,phone_verified,expected_status", [
+        (False, False, 201),
+        (True, False, 409),
+        (True, True, 409),
+    ])
+    async def test_registration_with_different_verification_states(
+            self, client, session, email_verified, phone_verified, expected_status
+    ):
+        user = await self._create_user(
+            session,
+            email_verified=email_verified,
+            phone_verified=phone_verified
+        )
+
+        response = await self._register_user(client, user)
+        assert response.status_code == expected_status
+
+    async def test_registration_with_shared_unverified_phone(self, client, session):
+        users = await self._create_users(session, [
+            {"email_verified": False, "phone_verified": False},
+            {"email_verified": True, "phone_verified": False, "phone_number": ''}
+        ])
+
+        users[1].phone_number = users[0].phone_number
+        await session.commit()
+
+        response = await self._register_user(client, users[0])
+        assert response.status_code == 201
 
 
 

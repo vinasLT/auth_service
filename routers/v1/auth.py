@@ -56,6 +56,8 @@ async def register(
 
     try:
         user_service = UserService(db)
+
+        # Проверяем существование пользователей с таким email и телефоном
         try:
             result_email = await user_service.get_by_email(str(user_data.email))
             result_phone_number = await user_service.get_by_phone_number(str(user_data.phone_number))
@@ -68,32 +70,56 @@ async def register(
                 detail="Multiple results found for email or phone number"
             )
 
-        if result_email or result_phone_number:
-
-            if result_email and result_phone_number:
-                text = 'email and phone number'
-            elif result_email:
-                text = 'email'
-            elif result_phone_number:
-                text = 'phone number'
-            else:
-                text = 'some credential'
-
-            logger.warning(f'Registration failed - {text} already registered', extra={
-                "email": user_data.email,
-                "phone_number": user_data.phone_number,
-                "existing_user_id": result_email.id if result_email else result_phone_number.id,
-            })
+        # Обработка существующего email
+        if result_email:
             if result_email.email_verified:
+                # Email подтвержден - возвращаем ошибку
+                logger.warning(f'Registration failed - email already registered and verified', extra={
+                    "email": user_data.email,
+                    "existing_user_id": result_email.id,
+                })
                 raise RegisteredWithPresentCredentialsProblem(
-                    detail="Email or phone number already registered"
+                    detail="Email already registered and verified"
                 )
             else:
-                raise RegisteredWithPresentCredentialsProblem(
-                    detail="Email or phone number already registered, please verify your email",
-                    user_uuid=result_email.uuid_key
-                )
+                # Email не подтвержден - обновляем данные пользователя и возвращаем его
+                logger.info(f'Found unverified user with email, updating user data', extra={
+                    "email": user_data.email,
+                    "existing_user_id": result_email.id,
+                })
 
+                # Обновляем пароль и другие данные
+                password_hash = auth_service.hash_password(user_data.password)
+                result_email.password_hash = password_hash
+                result_email.phone_number = user_data.phone_number
+                result_email.first_name = user_data.first_name
+                result_email.last_name = user_data.last_name
+
+                await db.commit()
+                await db.refresh(result_email)
+
+                logger.info(f'Registration successful - updated existing unverified user', extra={
+                    "email": user_data.email,
+                    "phone_number": user_data.phone_number,
+                    "user_id": result_email.id,
+                    "user_uuid": result_email.uuid_key
+                })
+
+                return result_email
+
+        # Обработка существующего телефона (только если email не существует)
+        if result_phone_number:
+            # Проверяем, подтвержден ли телефон
+            if hasattr(result_phone_number, 'phone_verified') and result_phone_number.phone_verified:
+                # Телефон подтвержден - возвращаем ошибку
+                logger.warning(f'Registration failed - phone number already registered and verified', extra={
+                    "phone_number": user_data.phone_number,
+                    "existing_user_id": result_phone_number.id,
+                })
+                raise RegisteredWithPresentCredentialsProblem(
+                    detail="Phone number already registered and verified"
+                )
+        # Создаем нового пользователя, если не нашли существующего с неподтвержденным email
         role_service = RoleService(db)
         user_role_service = UserRoleService(db)
 
@@ -107,7 +133,7 @@ async def register(
         })
 
         user_uuid = str(uuid.uuid4())
-        user_data = UserCreate(
+        new_user_data = UserCreate(
             uuid_key=user_uuid,
             password_hash=password_hash,
             email=user_data.email,
@@ -117,7 +143,7 @@ async def register(
             last_name=user_data.last_name,
         )
 
-        user = await user_service.create(user_data, flush=True)
+        user = await user_service.create(new_user_data, flush=True)
 
         logger.debug(f'User created, assigning role', extra={
             "user_id": user.id,

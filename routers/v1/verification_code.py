@@ -30,6 +30,16 @@ async def send_code(
     user_service = UserService(db)
     user = await user_service.get_user_by_uuid(user_uuid)
 
+    if destination == Destination.EMAIL:
+        verified_email = await user_service.get_by_email(user.email)
+        if verified_email:
+            raise BadRequestProblem(detail="This email already verified")
+    else:
+        verified_phone_number = await user_service.get_by_phone_number(user.phone_number)
+        if verified_phone_number:
+            raise BadRequestProblem(detail="This phone number already verified")
+
+
     if not user:
         raise NotFoundProblem(detail="User not found")
 
@@ -48,6 +58,15 @@ async def verify_code(user_uuid: str = Path(description='user uuid, retrieved af
     user = await user_service.get_user_by_uuid(user_uuid)
     if not user:
         raise NotFoundProblem(detail="User not found")
+
+    if destination == Destination.EMAIL:
+        verified_email = await user_service.get_by_email(user.email, is_verified=False)
+        if not verified_email:
+            raise BadRequestProblem(detail="This email already verified")
+    else:
+        verified_phone_number = await user_service.get_by_phone_number(user.phone_number, is_verified=False)
+        if not verified_phone_number:
+            raise BadRequestProblem(detail="This phone number already verified")
 
     if not await code_service.verify_code(user_id=user.id, code=code.code, destination=destination):
         raise InvalidCodeProblem(detail=f"Invalid code")

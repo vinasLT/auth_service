@@ -41,36 +41,42 @@ class TestVerifyCode:
         assert response.status_code == 200
         assert response.json() == {"message": "Code verified"}
 
-    # async def test_verify_code_success_sms(self, client: AsyncClient, session: AsyncSession):
-    #     """Тест успешной верификации кода для SMS"""
-    #     user = UserFactory.build(
-    #         phone_number="1234567890",
-    #         email="test@example.com",
-    #         phone_verified=False
-    #     )
-    #     session.add(user)
-    #     await session.commit()
-    #     await session.refresh(user)
-    #
-    #     # Создаем активный код верификации через фабрику
-    #     verification_code = VerificationCodeFactory.build(
-    #         user_id=user.id,
-    #         code="654321",
-    #         destination=Destination.SMS
-    #     )
-    #     session.add(verification_code)
-    #     await session.commit()
-    #
-    #     payload = {"code": "654321"}
-    #     response = await client.post(
-    #         f"v1/verification-code/verify/{user.uuid_key}/",
-    #         json=payload
-    #     )
-    #
-    #     print(response.json())
-    #
-    #     assert response.status_code == 200
-    #     assert response.json() == {"message": "Code verified"}
+    async def test_verify_code_where_phone_in_different_acc_unverified(self, client: AsyncClient, session: AsyncSession):
+        user = UserFactory.build(
+            phone_number="1234567890",
+            email="test@example.com",
+            email_verified=False
+        )
+        user_with_same_unverified_phone = UserFactory.build(
+            phone_number="1234567890",
+            phone_verified=False
+
+        )
+        session.add(user)
+        session.add(user_with_same_unverified_phone)
+        await session.commit()
+        await session.refresh(user)
+        await session.refresh(user_with_same_unverified_phone)
+
+        verification_code = VerificationCodeFactory.build(
+            user_id=user.id,
+            code="123456",
+            destination=Destination.EMAIL
+        )
+        session.add(verification_code)
+        await session.commit()
+
+        payload = {"code": "123456"}
+        response = await client.post(
+            f"v1/verification-code/{user.uuid_key}/email/verify",
+            json=payload
+        )
+        assert response.status_code == 200
+
+
+
+
+
 
     async def test_verify_code_user_not_found(self, client: AsyncClient, session: AsyncSession):
         """Тест с несуществующим пользователем"""
