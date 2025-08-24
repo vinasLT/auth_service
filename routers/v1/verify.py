@@ -23,11 +23,6 @@ async def verify_request(request: Request, payload: dict = Security(get_current_
             "original_uri": original_uri
         })
 
-        original_method = request.headers.get("X-Forwarded-Method", "GET")
-        original_host = request.headers.get("X-Forwarded-Host", "")
-        original_uri = request.headers.get("X-Forwarded-Uri", "")
-
-        logger.info(f"Authenticating: {original_method} {original_host}{original_uri}")
 
 
         roles = ",".join(payload.get("roles", []))

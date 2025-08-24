@@ -84,10 +84,15 @@ async def register(
                 "phone_number": user_data.phone_number,
                 "existing_user_id": result_email.id if result_email else result_phone_number.id,
             })
-
-            raise RegisteredWithPresentCredentialsProblem(
-                detail="Email or phone number already registered"
-            )
+            if result_email.email_verified:
+                raise RegisteredWithPresentCredentialsProblem(
+                    detail="Email or phone number already registered"
+                )
+            else:
+                raise RegisteredWithPresentCredentialsProblem(
+                    detail="Email or phone number already registered, please verify your email",
+                    user_uuid=result_email.uuid_key
+                )
 
         role_service = RoleService(db)
         user_role_service = UserRoleService(db)

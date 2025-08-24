@@ -28,6 +28,26 @@ class TestUserRegistration:
 
         assert response.status_code == 409
 
+    async def test_if_user_register_but_not_verify_email(self, client, session):
+        new_user = UserFactory.build(email_verified=False, phone_verified=False)
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(
+            new_user
+        )
+        payload = {
+            "email": new_user.email,
+            "phone_number": new_user.phone_number,
+            "password": "StrongPass!2",
+            "first_name": new_user.first_name,
+            "last_name": new_user.last_name,
+        }
+
+        response = await client.post("v1/register", json=payload)
+        assert response.status_code == 409
+
+
+
     async def test_register_success(self, client: AsyncClient, session: AsyncSession, mock_auth_service):
         new_user = UserFactory.build()
         payload = {
