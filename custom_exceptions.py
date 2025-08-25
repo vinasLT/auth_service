@@ -32,3 +32,10 @@ class UserDeactivatedProblem(ForbiddenProblem):
 class InvalidCodeProblem(BadRequestProblem):
     type = "invalid-code"
     title = "Invalid code"
+
+async def raise_code_rate_limiter_error(request: Request, response: Response, pexpire: int):
+    raise TooManyRequests(
+        status=429,
+        title="Too many requests",
+        detail=f"Too many requests, try after {pexpire // 1000} seconds, last sent code will be valid"
+    )

@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Callable
 
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,8 +37,8 @@ async def get_auth_service(redis_client: Redis = Depends(get_redis_client), kms_
     active_signing_key = await sign_key_service.get_newer_active_key()
     yield AuthService(kms_session, redis_client, str(active_signing_key.key_arn))
 
-def get_rate_limiter(times: int, seconds: int, identifier=user_identifier):
-    limiter = RateLimiter(times=times, seconds=seconds, identifier=identifier, callback=raise_rate_limiter_error)
+def get_rate_limiter(times: int, seconds: int, identifier=user_identifier, error_callback: Callable = raise_rate_limiter_error):
+    limiter = RateLimiter(times=times, seconds=seconds, identifier=identifier, callback=error_callback)
     return Depends(limiter)
 
 async def get_rabbit_mq_service() -> AsyncGenerator[RabbitMQPublisher, None]:
