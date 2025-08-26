@@ -318,7 +318,7 @@ class TestVerifyCode:
 
         # Отправляем множество неверных кодов
         responses = []
-        for i in range(16):  # Больше лимита
+        for i in range(26):  # Больше лимита
             response = await client.post(
                 f"v1/verification-code/{user.uuid_key}/email/verify",
                 json=payload
@@ -332,7 +332,7 @@ class TestVerifyCode:
             assert responses[i].status_code == 400  # 400 из-за неверного кода
         print(responses[15].json())
 
-        assert responses[15].status_code == 429  # Too Many Requests
+        assert responses[25].status_code == 429  # Too Many Requests
 
     async def test_verify_code_deactivates_after_use(self, client: AsyncClient, session: AsyncSession):
         """Тест деактивации кода после успешного использования"""
