@@ -129,6 +129,8 @@ class AuthService(Signer):
             "email": user.email,
             'email_verified': user.email_verified,
             'phone_verified': user.phone_verified,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
             "iat": now,
             "exp": now + timedelta(seconds=ttl_seconds),
             "jti": str(uuid.uuid4()),
