@@ -1,10 +1,25 @@
 from enum import Enum
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+class Permissions(str, Enum):
+    USERS_READ_ALL = "auth.user.all:read"
+    USERS_WRITE_ALL = "auth.user.all:write"
+
+    ROLES_READ_ALL = "auth.role.all:read"
+    ROLES_WRITE_ALL = "auth.role.all:write"
+    ROLES_DELETE_ALL = "auth.role.all:delete"
+
+    PERMISSIONS_READ_ALL = "auth.permission.all:read"
+    PERMISSIONS_WRITE_ALL = "auth.permission.all:write"
+    PERMISSIONS_DELETE_ALL = "auth.permission.all:delete"
+
+    USERS_READ_OWN = "auth.user.own:read"
+    USERS_WRITE_OWN = "auth.user.own:write"
 
 
 class Environment(str, Enum):
@@ -51,8 +66,8 @@ class Settings(BaseSettings):
     RABBITMQ_EXCHANGE_NAME: str = 'events'
 
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env")
+
 
 
 settings = Settings()

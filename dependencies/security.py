@@ -1,0 +1,206 @@
+from datetime import datetime
+from typing import Dict, Optional, Any
+
+import jwt
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import Field, BaseModel, field_validator, ValidationError
+from rfc9457 import UnauthorisedProblem
+
+from auth.service import AuthService, TokenType
+from config import Permissions
+from core.logger import logger
+from custom_exceptions import NotEnoughPermissionsProblem
+
+from deps import get_auth_service
+
+security_JWT = HTTPBearer()
+
+
+class JWTUser(BaseModel):
+    id: str = Field(..., description="User UUID")
+    email: str = Field("", description="Email")
+    first_name: str = Field(..., description='User first name')
+    last_name: str = Field(..., description='User last name')
+    role: list[str] = Field(default_factory=list, description="Roles")
+    permissions: list[str] = Field(default_factory=list, description="Permissions")
+    token_expires: Optional[datetime] = Field(None, description="Token expiration date")
+    access_token: str = Field(..., description="JWT access token")
+
+    model_config = {
+        "validate_assignment": True,
+    }
+
+    @classmethod
+    def parse_lists(cls, v):
+        if isinstance(v, str):
+            return [p.strip() for p in v.split(',') if p.strip()]
+        return v or []
+
+    @field_validator('permissions', mode='before')
+    @classmethod
+    def parse_permissions(cls, v: Any) -> list[str]:
+        return cls.parse_lists(v)
+
+    @field_validator('role', mode='before')
+    @classmethod
+    def parse_role(cls, v: Any) -> list[str]:
+        return cls.parse_lists(v)
+
+    @field_validator('token_expires', mode='before')
+    @classmethod
+    def parse_expires(cls, v: Any) -> Optional[datetime]:
+        if isinstance(v, str) and v.isdigit():
+            try:
+                return datetime.fromtimestamp(int(v))
+            except (ValueError, OSError):
+                return None
+        return v
+
+    @property
+    def is_token_expired(self) -> bool:
+        if not self.token_expires:
+            return False
+        return datetime.now() > self.token_expires
+
+    def has_permission(self, permission: str) -> bool:
+        return permission in self.permissions
+
+    def has_any_permission(self, *permissions: str) -> bool:
+        return any(perm in self.permissions for perm in permissions)
+
+    def has_all_permissions(self, *permissions: str) -> bool:
+        return all(perm in self.permissions for perm in permissions)
+
+    def has_role(self, role: str) -> bool:
+        return role.lower() in [r.lower() for r in self.role]
+
+    def has_any_role(self, *roles: str) -> bool:
+        user_roles = [r.lower() for r in self.role]
+        return any(role.lower() in user_roles for role in roles)
+
+    def has_all_roles(self, *roles: str) -> bool:
+        user_roles = [r.lower() for r in self.role]
+        return all(role.lower() in user_roles for role in roles)
+
+
+async def get_current_user(
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_JWT),
+        auth_service: AuthService = Depends(get_auth_service),
+) -> JWTUser:
+    token = credentials.credentials
+    payload = await auth_service.verify_token(token)
+    if not payload:
+        raise UnauthorisedProblem(detail="Invalid token")
+
+    is_blacklisted = await auth_service.is_token_blacklisted(TokenType.ACCESS, str(payload.get("jti")))
+    if is_blacklisted:
+        raise UnauthorisedProblem(detail="Token revoked")
+
+    return extract_user_from_payload(payload)
+
+
+def decode_jwt_without_signature(token: str) -> Dict[str, Any]:
+    try:
+        payload = jwt.decode(
+            token,
+            options={"verify_signature": False, "verify_exp": False}
+        )
+        return payload
+    except Exception as e:
+        logger.warning(f"Error decoding JWT token", extra={
+            'error': str(e),
+        })
+        raise UnauthorisedProblem(detail=f"Invalid JWT token: {str(e)}")
+
+
+async def get_user_without_check(
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_JWT)
+) -> JWTUser:
+    token = credentials.credentials
+    payload = decode_jwt_without_signature(token)
+    return extract_user_from_payload(payload)
+
+
+def extract_user_from_payload(payload: Dict[str, Any]) -> JWTUser:
+    user_uuid = payload.get("sub")
+    first_name = payload.get("first_name")
+    last_name = payload.get("last_name")
+    email = payload.get("email")
+    roles = payload.get("roles")
+    permissions = payload.get("permissions")
+    token_expires = payload.get("exp")
+    try:
+        user = JWTUser(
+            id=user_uuid,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            role=roles,
+            permissions=permissions,
+            token_expires=token_expires
+        )
+    except ValidationError as e:
+        logger.warning(f"Error decoding JWT token", extra={
+            'error': str(e),
+        })
+        raise UnauthorisedProblem(detail=f"Invalid JWT token: {str(e)}")
+    return user
+
+
+class RequirePermission:
+    def __init__(
+            self,
+            permissions: list[Permissions] = None,
+            require_all: bool = False,
+            require_token: bool = True
+    ):
+        self.permissions = permissions or []
+        self.require_all = require_all
+        self.require_token = require_token
+
+    def __call__(self, user: JWTUser = Depends(get_current_user)) -> JWTUser:
+        if not self.require_token:
+            return user
+
+        if self.permissions:
+            permission_strings = [perm.value if hasattr(perm, 'value') else str(perm)
+                                  for perm in self.permissions]
+
+            if self.require_all:
+                if not user.has_all_permissions(*permission_strings):
+                    logger.warning(
+                        'User doesnt have all required permissions',
+                        extra={
+                            'required_permissions': permission_strings,
+                            'user_permissions': user.permissions
+                        }
+                    )
+                    raise NotEnoughPermissionsProblem(detail="Missing permissions")
+            else:
+                if not user.has_any_permission(*permission_strings):
+                    logger.warning(
+                        'User doesnt have any required permissions',
+                        extra={
+                            'required_permissions': permission_strings,
+                            'user_permissions': user.permissions
+                        }
+                    )
+                    raise NotEnoughPermissionsProblem(detail="Missing permissions")
+
+        return user
+
+
+def require_permission(
+        permissions: list[Permissions],
+        require_all: bool = False
+) -> RequirePermission:
+    return RequirePermission(permissions, require_all)
+
+
+def require_any_permission(*permissions: Permissions) -> RequirePermission:
+    return RequirePermission(list(permissions), require_all=False)
+
+
+def require_all_permissions(*permissions: Permissions) -> RequirePermission:
+    return RequirePermission(list(permissions), require_all=True)

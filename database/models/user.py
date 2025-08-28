@@ -8,6 +8,7 @@ from database.models import Base
 
 if TYPE_CHECKING:
     from database.models.many_to_many.user_role import UserRole
+    from database.models.role import Role
 
 
 class User(Base):
@@ -34,7 +35,11 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC),
                                                  onupdate=lambda: datetime.now(UTC))
 
-    roles: Mapped[List["UserRole"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan"
+    roles: Mapped[List["Role"]] = relationship(
+        "Role",
+        secondary="user_roles",
+        back_populates="users",
+        lazy="selectin"
     )
+
+

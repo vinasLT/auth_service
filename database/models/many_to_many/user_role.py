@@ -18,5 +18,3 @@ class UserRole(Base):
     role_id: Mapped[int] = mapped_column(ForeignKey('role.id'))
     assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    user: Mapped["User"] = relationship(back_populates="roles")
-    role: Mapped["Role"] = relationship(back_populates="user_roles")

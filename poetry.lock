@@ -905,6 +905,41 @@ fastapi = "*"
 redis = ">=4.2.0rc1"
 
 [[package]]
+name = "fastapi-pagination"
+version = "0.14.0"
+description = "FastAPI pagination"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "fastapi_pagination-0.14.0-py3-none-any.whl", hash = "sha256:72ed471c79c3aa07940b287b9cf022503ec2e69e1f2ca5a7a5fcd8152cc43392"},
+    {file = "fastapi_pagination-0.14.0.tar.gz", hash = "sha256:e576800270f2714c781241b66c11f5da24f6671670edc122f5be7e4c2bd7f353"},
+]
+
+[package.dependencies]
+fastapi = ">=0.93.0"
+pydantic = ">=1.9.1"
+typing-extensions = ">=4.8.0,<5"
+
+[package.extras]
+asyncpg = ["asyncpg (>=0.24.0)", "sqlalchemy (>=1.3.20)"]
+beanie = ["beanie (>=2.0.0)"]
+bunnet = ["bunnet (>=1.1.0,<2)"]
+databases = ["databases (>=0.6.0)"]
+django = ["databases (>=0.6.0)", "django (<6.0.0)"]
+elasticsearch = ["elasticsearch-dsl (>=8.13.0,<9)"]
+firestore = ["google-cloud-firestore (>=2.19.0,<3)"]
+mongoengine = ["mongoengine (>=0.23.1,<0.30.0)"]
+motor = ["motor (>=3.6.0,<4.0.0)"]
+odmantic = ["odmantic (>=1.0.2,<2)"]
+orm = ["databases (>=0.6.0)", "orm (>=0.3.1)"]
+piccolo = ["piccolo (>=0.89,<1.25)"]
+scylla-driver = ["scylla-driver (>=3.25.6,<4)"]
+sqlalchemy = ["sqlakeyset (>=2.0.1680321678,<3)", "sqlalchemy (>=1.3.20)"]
+sqlmodel = ["sqlakeyset (>=2.0.1680321678,<3)", "sqlmodel (>=0.0.22)"]
+tortoise = ["tortoise-orm (>=0.22.0)"]
+
+[[package]]
 name = "fastapi-problem"
 version = "0.11.4"
 description = "FastAPI support for RFC9457 problems."
@@ -2537,4 +2572,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "347ad9eeebc453e50321f38ce48273ca92dc4465989e75e95c6c3ee8664060fc"
+content-hash = "611b3218eeb624edd237d9210340a5c629c569c3553d300346c67a8b582ead5f"

@@ -2,9 +2,8 @@ from fastapi import APIRouter, Depends, Path, Body
 from rfc9457 import NotFoundProblem, BadRequestProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from code_service import CodeService, VerificationCodeSender
-from core.logger import logger
-from custom_exceptions import TooManyRequests, InvalidCodeProblem
+from code_service import VerificationCodeSender
+from custom_exceptions import InvalidCodeProblem
 from database.crud.user import UserService
 from database.crud.verification_code import VerificationCodeService
 from database.db.session import get_async_db
@@ -12,8 +11,8 @@ from database.models.verification_code import Destination, VerificationCodeRouti
 from database.schemas.user import UserUpdate
 from deps import get_rate_limiter, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
-from request_schemas.registration import EmailIn
-from request_schemas.verification_code import CodeIn
+from schemas.request_schemas.registration import EmailIn
+from schemas.request_schemas.verification_code import CodeIn
 
 verification_code_router = APIRouter()
 

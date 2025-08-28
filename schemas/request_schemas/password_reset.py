@@ -1,9 +1,9 @@
 from pydantic import Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
-from request_schemas.registration import EmailIn, PasswordIn, PasswordStr
-from request_schemas.validators.password import password_complexity_validator
-from request_schemas.verification_code import CodeIn
+from schemas.request_schemas.registration import EmailIn
+from schemas.request_schemas.validators.password import password_complexity_validator
+from schemas.request_schemas.verification_code import CodeIn
 
 
 class ResetPasswordIn(EmailIn, CodeIn):

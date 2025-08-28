@@ -1,5 +1,5 @@
-from fastapi import Depends, APIRouter, Body, Request, Security
-from rfc9457 import UnauthorisedProblem, ForbiddenProblem, ServerProblem, Problem
+from fastapi import Depends, APIRouter, Body, Request, Security, Response
+from rfc9457 import UnauthorisedProblem, ServerProblem, Problem
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, UTC, timedelta
@@ -7,9 +7,10 @@ import uuid
 
 from auth.service import AuthService, TokenType
 from base_checks import check_user
+from config import settings, Environment
 from core.logger import logger
 
-from custom_exceptions import RegisteredWithPresentCredentialsProblem, EmailNotVerifiedProblem, UserDeactivatedProblem
+from custom_exceptions import RegisteredWithPresentCredentialsProblem
 from database.crud.many_to_many.user_role import UserRoleService
 from database.crud.refresh_token import RefreshTokenService
 from database.crud.role import RoleService
@@ -26,11 +27,11 @@ from database.schemas.user import (
 
 from database.schemas.user_session import UserSessionCreate, UserSessionUpdate
 from deps import get_auth_service, get_rate_limiter
-from request_schemas.logout import LogoutRequest
-from request_schemas.refresh import RefreshTokenIn
-from request_schemas.registration import UserIn, EmailPassIn
-from request_schemas.token import TokenResponse
-from security import get_current_user
+from schemas.request_schemas.logout import LogoutRequest
+from schemas.request_schemas.refresh import RefreshTokenIn
+from schemas.request_schemas.registration import UserIn, EmailPassIn
+from schemas.request_schemas.token import TokenResponse
+from dependencies.security import get_current_user
 from utils import client_ip_from_request, device_name_from_user_agent
 
 auth_v1_router = APIRouter()
@@ -180,7 +181,10 @@ async def register(
                      description="Login and receive tokens",
                      summary="Login",
                      dependencies=[get_rate_limiter(times=10, seconds=60)])
-async def login(request: Request, credentials: EmailPassIn = Body(...), db: AsyncSession = Depends(get_async_db),
+async def login(request: Request,
+                response: Response,
+                credentials: EmailPassIn = Body(...),
+                db: AsyncSession = Depends(get_async_db),
                 auth_service: AuthService = Depends(get_auth_service)):
     user_agent = request.headers.get("user-agent", "")
     device_name = request.headers.get("x-device-name") or device_name_from_user_agent(user_agent)
@@ -269,7 +273,25 @@ async def login(request: Request, credentials: EmailPassIn = Body(...), db: Asyn
         access_token = await auth_service.generate_token(access_token_payload)
         refresh_token = await auth_service.generate_token(refresh_token_payload)
 
-        logger.info(f'Login successful', extra={
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            max_age=auth_service.access_token_ttl,
+            httponly=True,
+            secure=settings.ENVIRONMENT == Environment.PRODUCTION,
+            samesite="lax"
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            max_age=auth_service.refresh_token_ttl,
+            httponly=True,
+            secure=settings.ENVIRONMENT == Environment.PRODUCTION,
+            samesite="lax"
+        )
+
+        logger.info(f'Login successful - tokens set in cookies', extra={
             "email": credentials.email,
             "user_id": user.id,
             "user_uuid": user.uuid_key,

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from database.models import Base
 if TYPE_CHECKING:
@@ -14,7 +14,4 @@ class RolePermission(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     role_id: Mapped[int] = mapped_column(ForeignKey('role.id'))
     permission_id: Mapped[int] = mapped_column(ForeignKey('permission.id'))
-
-    role: Mapped["Role"] = relationship(back_populates="role_permissions")
-    permission: Mapped["Permission"] = relationship(back_populates="role_permissions")
 

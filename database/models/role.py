@@ -1,14 +1,15 @@
 from datetime import datetime, UTC
 from typing import Optional, List, TYPE_CHECKING
 
-from sqlalchemy import DateTime, String, Table, ForeignKey, Column
+from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models import Base
-from database.models.many_to_many.role_permission import RolePermission
 
 if TYPE_CHECKING:
     from database.models.many_to_many.user_role import UserRole
+    from database.models.user import User
+    from database.models.permission import Permission
 
 
 class Role(Base):
@@ -20,10 +21,17 @@ class Role(Base):
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    user_roles: Mapped[List["UserRole"]] = relationship(back_populates="role")
 
-    role_permissions: Mapped[List["RolePermission"]] = relationship(
-        "RolePermission",
-        back_populates="role",
-        cascade="all, delete-orphan"
+    permissions: Mapped[List["Permission"]] = relationship(
+        "Permission",
+        back_populates="roles",
+        secondary="role_permissions",
+        lazy="selectin"
+    )
+
+    users: Mapped[List["User"]] = relationship(
+        "User",
+        secondary="user_roles",
+        back_populates="roles",
+        lazy="selectin"
     )

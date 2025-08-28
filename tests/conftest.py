@@ -8,13 +8,12 @@ from redis import Redis
 from sqlalchemy import event, StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from auth.service import AuthService
 from database.db.session import get_async_db
 from database.models import Base
 from deps import get_redis_client, get_auth_service, get_rabbit_mq_service
 from main import app
 from rabbit_service.service import RabbitMQPublisher
-from security import get_current_user
+from dependencies.security import get_current_user
 from tests.moks import get_test_redis_client, mock_auth_service, mock_get_current_user, mock_rabbit_mq
 
 

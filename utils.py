@@ -1,6 +1,12 @@
 from typing import Optional
 
-from fastapi import Request
+from fastapi import Request, Query
+from fastapi_pagination import Page
+from fastapi_pagination.customization import CustomizedPage, UseParamsFields, UseFieldsAliases
+from pydantic import BaseModel
+
+from schemas.response_schemas.users import FullUserOut
+
 
 def client_ip_from_request(request: Request) -> Optional[str]:
     xff = request.headers.get("x-forwarded-for")
@@ -30,3 +36,13 @@ def device_name_from_user_agent(user_agent: str) -> str:
     if "linux" in ua:
         return "Linux"
     return "Unknown"
+
+def create_pagination_page(pydantic_model: type[BaseModel])-> type[Page[BaseModel]]:
+    return CustomizedPage[
+        Page[pydantic_model],
+        UseParamsFields(size=Query(5, ge=1, le=1000)),
+        UseFieldsAliases(
+            items="data",
+            total='count'
+        )
+    ]

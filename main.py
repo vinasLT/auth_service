@@ -3,15 +3,18 @@ from contextlib import asynccontextmanager
 import redis
 from fastapi import FastAPI, APIRouter
 from fastapi_limiter import FastAPILimiter
+from fastapi_pagination import add_pagination
 
 from config import settings
 from core.logger import logger
-from routers.v1.auth import auth_v1_router
+from routers.v1.private.role import roles_router
+from routers.v1.private.user import user_router, user_control_router
+from routers.v1.public.auth import auth_v1_router
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
 
-from routers.v1.password_reset import password_reset_router
-from routers.v1.verification_code import verification_code_router
-from routers.v1.verify import verify_request_router
+from routers.v1.public.password_reset import password_reset_router
+from routers.v1.public.verification_code import verification_code_router
+from routers.v1.public.verify import verify_request_router
 
 
 @asynccontextmanager
@@ -41,13 +44,24 @@ app = FastAPI(
 eh = new_exception_handler()
 add_exception_handler(app, eh)
 
-v1_router = APIRouter()
+add_pagination(app)
+
+v1_router = APIRouter(prefix="/v1")
+
 v1_router.include_router(auth_v1_router, tags=["auth"])
 v1_router.include_router(verify_request_router, tags=["internal"])
 v1_router.include_router(verification_code_router, prefix="/verification-code", tags=["verification-code"])
 v1_router.include_router(password_reset_router, prefix="/password-reset", tags=["password-reset"])
 
-app.include_router(v1_router, prefix="/v1")
+private_router = APIRouter(prefix="/private")
+private_router.include_router(user_control_router, tags=["user"])
+private_router.include_router(roles_router, tags=["roles"])
+
+v1_router.include_router(private_router)
+
+app.include_router(v1_router)
+
+
 
 
 @app.get("/health")

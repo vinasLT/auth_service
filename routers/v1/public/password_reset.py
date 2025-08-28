@@ -12,7 +12,7 @@ from database.db.session import get_async_db
 from database.models.verification_code import Destination
 from database.schemas.user import UserUpdate, UserRead
 from deps import get_auth_service, get_rate_limiter
-from request_schemas.password_reset import ResetPasswordIn
+from schemas.request_schemas.password_reset import ResetPasswordIn
 
 password_reset_router = APIRouter()
 

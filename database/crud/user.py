@@ -1,6 +1,6 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union, Any, Coroutine, Sequence
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, Select, and_, GenerativeSelect, Row, RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -37,40 +37,62 @@ class UserService(BaseService[User, UserCreate, UserUpdate]):
         )
         return result.scalar_one_or_none()
 
+    async def get_all_users(
+            self,
+            search: str = '',
+            get_stmt: bool = False,
+            include_inactive: bool = False,
+    ) -> Select[tuple[User]] | Sequence[User]:
+        query = await self.get_all(get_stmt=True)
+
+        conditions = []
+
+        if not include_inactive:
+            conditions.append(User.is_active == True)
+
+        if search.strip():
+            search_term = f"%{search.lower()}%"
+            search_conditions = [
+                func.lower(User.email).like(search_term),
+                func.lower(User.username).like(search_term),
+                func.lower(User.first_name).like(search_term),
+                func.lower(User.last_name).like(search_term),
+                func.lower(User.phone_number).like(search_term),
+                func.lower(func.concat(User.first_name, ' ', User.last_name)).like(search_term)
+            ]
+            conditions.append(or_(*search_conditions))
+
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        query = query.order_by(User.created_at.desc())
+
+        if get_stmt:
+            return query
+
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
     async def get_user_by_uuid(self, uuid: str) -> Optional[User]:
         result = await self.session.execute(
             select(User).where(User.uuid_key == uuid)
         )
         return result.scalar_one_or_none()
 
-    async def get_user_with_permissions(self, user_id: int) -> Optional[User]:
-        result = await self.session.execute(
-            select(User)
-            .where(User.id == user_id)
-            .options(
-                selectinload(User.roles)
-                .selectinload(UserRole.role)
-                .selectinload(Role.role_permissions)
-                .selectinload(RolePermission.permission)
-            )
-        )
-
-        return result.scalar_one_or_none()
 
     async def extract_roles_and_permissions_from_user(self, user_id: int, user: User = None) -> Dict[str, List[str]]:
 
         if not user or (hasattr(user, 'roles') and user.roles is None):
-            user = await self.get_user_with_permissions(user_id)
+            user = await self.get(user_id)
 
         roles = []
         permissions = set()
 
         if hasattr(user, 'roles') and user.roles:
-            for user_role in user.roles:
-                roles.append(user_role.role.name)
+            for role in user.roles:
+                roles.append(role.name)
 
-                for role_permission in user_role.role.role_permissions:
-                    permission = role_permission.permission
+                for permission in role.permissions:
 
                     if permission.resource and permission.action:
                         permissions.add(f"{permission.resource}:{permission.action}")

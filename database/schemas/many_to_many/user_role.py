@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class UserRoleCreate(BaseModel):
@@ -14,5 +14,4 @@ class UserRoleUpdate(BaseModel):
 class UserRoleRead(UserRoleCreate):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

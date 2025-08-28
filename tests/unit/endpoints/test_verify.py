@@ -6,7 +6,7 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from security import get_current_user
+from dependencies.security import get_current_user
 
 @pytest.mark.asyncio
 class TestVerify:

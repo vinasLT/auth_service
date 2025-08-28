@@ -3,8 +3,8 @@ from typing import Annotated
 
 from pydantic import StringConstraints, BaseModel, EmailStr, Field, field_validator
 
-from request_schemas.validators.email import validate_email
-from request_schemas.validators.password import password_complexity_validator
+from schemas.request_schemas.validators.email import validate_email
+from schemas.request_schemas.validators.password import password_complexity_validator
 
 PasswordStr = Annotated[
     str,

@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from rfc9457 import UnauthorisedProblem
 
 from core.logger import logger
-from security import get_current_user
+from dependencies.security import get_current_user
 
 verify_request_router = APIRouter()
 
