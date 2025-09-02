@@ -1,8 +1,8 @@
-"""init
+"""update permissions table
 
-Revision ID: ec2efb79afef
+Revision ID: 93131fc9aeba
 Revises: 
-Create Date: 2025-08-20 19:14:36.404776
+Create Date: 2025-09-02 10:41:52.581589
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'ec2efb79afef'
+revision: str = '93131fc9aeba'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,13 +25,14 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
-    sa.Column('resource', sa.String(), nullable=True),
-    sa.Column('action', sa.String(), nullable=True),
+    sa.Column('resource', sa.String(), nullable=False),
+    sa.Column('action', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('resource', 'action', name='unique_resource_action')
     )
     op.create_index(op.f('ix_permission_id'), 'permission', ['id'], unique=False)
-    op.create_index(op.f('ix_permission_name'), 'permission', ['name'], unique=True)
+    op.create_index(op.f('ix_permission_name'), 'permission', ['name'], unique=False)
     op.create_table('role',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),

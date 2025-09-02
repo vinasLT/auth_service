@@ -9,6 +9,7 @@ from sqlalchemy import StaticPool
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
 
 from auth.service import AuthService, TokenType
+from dependencies.security import RequirePermission
 from deps import get_auth_service, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
 
@@ -26,6 +27,7 @@ def mock_auth_service():
     })
 
     mock_service.refresh_token_ttl = 3600
+    mock_service.access_token_ttl = 60 * 5
     # mock_service.get_payload_for_token = AsyncMock(return_value={
     #     "sub": 'iochjn3iruehfcwiuehfw',
     #     "email": 'example@email.com',
@@ -50,6 +52,15 @@ def mock_rabbit_mq():
     mock.connect = AsyncMock(return_value=None)
     mock.close = AsyncMock(return_value=None)
     return mock
+
+@pytest.fixture(scope="function")
+def mock_require_permissions():
+    mock = Mock(spec=RequirePermission)
+    mock.__call__.side_effect = lambda user: user
+    return mock
+
+def mock_require_all_permissions():
+    return mock_require_permissions()
 
 
 async def mock_get_payload_for_token(token_type, user, roles_permissions=None, token_family=None):

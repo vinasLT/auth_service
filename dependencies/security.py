@@ -25,7 +25,7 @@ class JWTUser(BaseModel):
     role: list[str] = Field(default_factory=list, description="Roles")
     permissions: list[str] = Field(default_factory=list, description="Permissions")
     token_expires: Optional[datetime] = Field(None, description="Token expiration date")
-    access_token: str = Field(..., description="JWT access token")
+    token_jti: str = Field(..., description="JWT access token JTI")
 
     model_config = {
         "validate_assignment": True,
@@ -130,6 +130,7 @@ def extract_user_from_payload(payload: Dict[str, Any]) -> JWTUser:
     roles = payload.get("roles")
     permissions = payload.get("permissions")
     token_expires = payload.get("exp")
+    jti = payload.get("jti")
     try:
         user = JWTUser(
             id=user_uuid,
@@ -138,7 +139,8 @@ def extract_user_from_payload(payload: Dict[str, Any]) -> JWTUser:
             email=email,
             role=roles,
             permissions=permissions,
-            token_expires=token_expires
+            token_expires=token_expires,
+            token_jti=jti
         )
     except ValidationError as e:
         logger.warning(f"Error decoding JWT token", extra={

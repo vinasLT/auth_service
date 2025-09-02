@@ -12,18 +12,24 @@ from schemas.request_schemas.role import CreateRoleIn, UpdateRoleIn
 
 
 class RoleService(BaseService[Role, RoleCreate, RoleUpdate]):
-    DEFAULT_ROLE_NAME = "user"
+
 
     def __init__(self, session: AsyncSession):
         super().__init__(Role, session)
 
     async def get_default_role(self):
+        from core.initial_permissions_roles_seed import USER_ROLE
         result = await self.session.execute(
-            select(Role).where(Role.is_default.is_(True))
+            select(Role).where(Role.name.is_(USER_ROLE))
         )
         role = result.scalar_one_or_none()
+        if not role.is_default:
+            role.is_default = True
+            await self.session.commit()
+            await self.session.refresh(role)
+            return role
         if role is None:
-            role = Role(name=self.DEFAULT_ROLE_NAME, description="Default role", is_default=True)
+            role = Role(name=USER_ROLE, description="Default role", is_default=True)
             self.session.add(role)
             await self.session.commit()
             await self.session.refresh(role)

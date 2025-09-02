@@ -1,5 +1,6 @@
 from typing import TypeVar, Generic, Type, Optional, Sequence
 
+from rfc9457 import NotFoundProblem
 from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -17,6 +18,12 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     async def get(self, obj_id: int) -> Optional[ModelType]:
         return await self.session.get(self.model, obj_id)
+
+    async def get_with_not_found_exception(self, obj_id: int, obj_name: str) -> ModelType:
+        obj = await self.get(obj_id)
+        if not obj:
+            raise NotFoundProblem(detail=f"Object '{obj_name}' not found")
+        return obj
 
     async def get_all(self, get_stmt: bool = False) -> Sequence[ModelType] | Select[ModelType]:
         query = select(self.model)

@@ -20,6 +20,11 @@ class RefreshTokenService(BaseService[RefreshToken, RefreshTokenCreate, RefreshT
         res = await self.session.execute(stmt)
         return res.scalar_one_or_none()
 
+    async def get_last_refresh_token_by_user_id(self, user_id: int) -> Optional[RefreshToken]:
+        stmt = select(RefreshToken).where(RefreshToken.user_id == user_id).limit(1).order_by(RefreshToken.issued_at.desc())
+        res = await self.session.execute(stmt)
+        return res.scalar_one_or_none()
+
     async def get_last_token_in_family(self, family_id: str, only_active: bool = True, require_not_expired: bool = True) -> Optional[RefreshToken]:
         now = datetime.now(UTC)
         conditions = [RefreshToken.token_family == family_id, RefreshToken.replaced_by_id.is_(None)]

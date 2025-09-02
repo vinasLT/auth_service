@@ -32,7 +32,7 @@ from schemas.request_schemas.refresh import RefreshTokenIn
 from schemas.request_schemas.registration import UserIn, EmailPassIn
 from schemas.request_schemas.token import TokenResponse
 from dependencies.security import get_current_user
-from utils import client_ip_from_request, device_name_from_user_agent
+from utils.decode_user_agent import device_name_from_user_agent, client_ip_from_request
 
 auth_v1_router = APIRouter()
 
@@ -58,7 +58,6 @@ async def register(
     try:
         user_service = UserService(db)
 
-        # Проверяем существование пользователей с таким email и телефоном
         try:
             result_email = await user_service.get_by_email(str(user_data.email))
             result_phone_number = await user_service.get_by_phone_number(str(user_data.phone_number))
@@ -74,7 +73,6 @@ async def register(
         # Обработка существующего email
         if result_email:
             if result_email.email_verified:
-                # Email подтвержден - возвращаем ошибку
                 logger.warning(f'Registration failed - email already registered and verified', extra={
                     "email": user_data.email,
                     "existing_user_id": result_email.id,
@@ -89,7 +87,6 @@ async def register(
                     "existing_user_id": result_email.id,
                 })
 
-                # Обновляем пароль и другие данные
                 password_hash = auth_service.hash_password(user_data.password)
                 result_email.password_hash = password_hash
                 result_email.phone_number = user_data.phone_number

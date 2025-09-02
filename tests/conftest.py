@@ -2,7 +2,9 @@ from typing import AsyncGenerator, Any
 
 import pytest
 import pytest_asyncio
+from asgi_lifespan import LifespanManager
 from fastapi_limiter import FastAPILimiter
+from fastapi_pagination import add_pagination
 from httpx import AsyncClient, ASGITransport
 from redis import Redis
 from sqlalchemy import event, StaticPool
@@ -11,10 +13,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from database.db.session import get_async_db
 from database.models import Base
 from deps import get_redis_client, get_auth_service, get_rabbit_mq_service
-from main import app
 from rabbit_service.service import RabbitMQPublisher
-from dependencies.security import get_current_user
-from tests.moks import get_test_redis_client, mock_auth_service, mock_get_current_user, mock_rabbit_mq
+from dependencies.security import get_current_user, require_all_permissions
+from tests.moks import get_test_redis_client, mock_auth_service, mock_get_current_user, mock_rabbit_mq, \
+    mock_require_all_permissions
+from utils.app_factory import create_app, setup_fastapi_limiter, setup_permissions_roles_seed, \
+    setup_middleware_and_handlers
 
 
 @pytest_asyncio.fixture
@@ -24,7 +28,10 @@ async def get_app(
     mock_rabbit_mq,
     session: AsyncSession,
 ):
-    await FastAPILimiter.init(await get_test_redis_client())
+    app = create_app()
+    await setup_fastapi_limiter(await get_test_redis_client())
+    await setup_permissions_roles_seed(session)
+    setup_middleware_and_handlers(app)
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
@@ -43,14 +50,12 @@ async def get_app(
 
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_async_db] = override_get_db
+    app.dependency_overrides[require_all_permissions] = mock_require_all_permissions
     app.dependency_overrides[get_redis_client] = override_get_redis
     app.dependency_overrides[get_auth_service] = override_get_auth_service
     app.dependency_overrides[get_rabbit_mq_service] = override_rabbit_mq
 
-    yield app
-
-    await FastAPILimiter.close()
-    app.dependency_overrides.clear()
+    return app
 
 @pytest_asyncio.fixture
 async def client(get_app):
