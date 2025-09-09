@@ -77,7 +77,7 @@ def seed_db(engine: Engine):
         if df.empty:
             logger.warning(f'Skipping {table}: CSV is empty')
             continue
-        if table == 'destination' and 'is_default' in df.columns:
+        if table == 'role' and 'is_default' in df.columns:
             df['is_default'] = _coerce_bool_series(df['is_default'])
         df.to_sql(table, engine, if_exists='append', index=False)
 
