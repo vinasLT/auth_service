@@ -48,15 +48,15 @@ def seed_db(engine: Engine):
 
     # Deletion order: children first, then parents (to satisfy FKs)
     delete_order = [
+        'role_permissions',
         'role',
         'permission',
-        'role_permissions',
     ]
 
     # Insertion order: parents first, then children
     insert_order = [
-        'role',
         'permission',
+        'role',
         'role_permissions'
     ]
 
@@ -74,9 +74,12 @@ def seed_db(engine: Engine):
         path = tables[table]
         logger.info(f'Seeding table {table} from {path}')
         df = pd.read_csv(path)
+        if df.empty:
+            logger.warning(f'Skipping {table}: CSV is empty')
+            continue
         if table == 'destination' and 'is_default' in df.columns:
             df['is_default'] = _coerce_bool_series(df['is_default'])
-        df.to_sql(table, engine, if_exists='replace', index=False)
+        df.to_sql(table, engine, if_exists='append', index=False)
 
 
 if __name__ == '__main__':
