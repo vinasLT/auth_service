@@ -1,15 +1,15 @@
 import sys
 from pathlib import Path
 
-import pandas as pd
-from sqlalchemy import Engine, text
-from database.db.session import engine
-from core.logger import logger
-
 CURRENT_FILE = Path(__file__).resolve()
 PROJECT_ROOT = CURRENT_FILE.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+import pandas as pd
+from sqlalchemy import Engine, text
+from database.db.session import engine
+from core.logger import logger
 
 
 def _coerce_bool_series(series: pd.Series) -> pd.Series:
