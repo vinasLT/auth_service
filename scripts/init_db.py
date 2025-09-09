@@ -7,7 +7,7 @@ from database.db.session import engine
 from core.logger import logger
 
 CURRENT_FILE = Path(__file__).resolve()
-PROJECT_ROOT = CURRENT_FILE.parent.parent
+PROJECT_ROOT = CURRENT_FILE.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
