@@ -7,7 +7,7 @@ from fastapi_limiter import FastAPILimiter
 from fastapi_pagination import add_pagination
 from httpx import AsyncClient, ASGITransport
 from redis import Redis
-from sqlalchemy import event, StaticPool
+from sqlalchemy import event, StaticPool, create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from database.db.session import get_async_db
@@ -15,9 +15,10 @@ from database.models import Base
 from deps import get_redis_client, get_auth_service, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
 from dependencies.security import get_current_user, require_all_permissions
+from scripts.init_db import seed_db
 from tests.moks import get_test_redis_client, mock_auth_service, mock_get_current_user, mock_rabbit_mq, \
     mock_require_all_permissions
-from utils.app_factory import create_app, setup_fastapi_limiter, setup_permissions_roles_seed, \
+from utils.app_factory import create_app, setup_fastapi_limiter, \
     setup_middleware_and_handlers
 
 
@@ -30,7 +31,7 @@ async def get_app(
 ):
     app = create_app()
     await setup_fastapi_limiter(await get_test_redis_client())
-    await setup_permissions_roles_seed(session)
+    # Use a separate connection for seeding, and close it before yielding the app
     setup_middleware_and_handlers(app)
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -56,6 +57,12 @@ async def get_app(
     app.dependency_overrides[get_rabbit_mq_service] = override_rabbit_mq
 
     return app
+
+@pytest.fixture(autouse=True)
+async def initialize_db():
+    async with engine_test_async.connect() as conn:
+        await conn.run_sync(seed_db)
+
 
 @pytest_asyncio.fixture
 async def client(get_app):
@@ -89,6 +96,8 @@ engine_test_async = create_async_engine(
     poolclass=StaticPool,
     echo=False,
 )
+
+
 
 AsyncTestSessionLocal = async_sessionmaker(
     bind=engine_test_async,

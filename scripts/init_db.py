@@ -38,7 +38,7 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
     return series.map(to_bool)
 
 
-async def seed_fees(engine: Engine):
+def seed_db(engine: Engine):
     src_dir = CURRENT_FILE.parent / 'src'
 
     tables = {
@@ -78,13 +78,11 @@ async def seed_fees(engine: Engine):
         df = pd.read_csv(path)
         if table == 'destination' and 'is_default' in df.columns:
             df['is_default'] = _coerce_bool_series(df['is_default'])
-        df.to_sql(table, engine, if_exists='append', index=False)
+        df.to_sql(table, engine, if_exists='replace', index=False)
 
 
 if __name__ == '__main__':
-    import asyncio
-
-    asyncio.run(seed_fees(engine))
+    seed_db(engine)
 
 
 
