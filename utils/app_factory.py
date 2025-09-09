@@ -7,9 +7,7 @@ from fastapi_pagination import add_pagination
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
 
 from config import settings
-from core.initial_permissions_roles_seed import initialize_permissions_roles_seed
 from core.logger import logger
-from database.db.session import AsyncSessionLocal
 from routers.v1.private.permission import permissions_router
 from routers.v1.private.role import roles_router
 from routers.v1.private.user import user_control_router
@@ -23,14 +21,6 @@ async def setup_fastapi_limiter(redis_client: Optional[redis.Redis] = None, pref
     if redis_client is None:
         redis_client = redis.asyncio.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
     await FastAPILimiter.init(redis_client, prefix=prefix)
-
-
-async def setup_permissions_roles_seed(db_session=None):
-    if db_session is None:
-        db_session = AsyncSessionLocal()
-    await initialize_permissions_roles_seed(db_session)
-    if db_session != AsyncSessionLocal():
-        await db_session.close()
 
 
 def setup_routers(app: FastAPI):
@@ -62,15 +52,11 @@ def setup_middleware_and_handlers(app: FastAPI):
 
 def create_app(
         setup_limiter: bool = True,
-        setup_seed: bool = True,
         custom_redis_client: Optional[redis.Redis] = None,
-        custom_db_session=None,
         lifespan_override: Optional[Callable] = None
 ) -> FastAPI:
     @asynccontextmanager
     async def default_lifespan(_: FastAPI):
-        if setup_seed:
-            await setup_permissions_roles_seed(custom_db_session)
 
         if setup_limiter:
             await setup_fastapi_limiter(custom_redis_client)

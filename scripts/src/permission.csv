@@ -1,0 +1,11 @@
+id,name,description,resource,action,created_at
+1,Default permission,Default permission,auth.user.own,read,2025-09-09 15:28:20.774930
+2,Default permission,Default permission,auth.user.own,write,2025-09-09 15:28:20.783705
+3,Default permission,Default permission,auth.user.all,read,2025-09-09 15:28:20.802686
+4,Default permission,Default permission,auth.user.all,write,2025-09-09 15:28:20.809136
+5,Default permission,Default permission,auth.role.all,read,2025-09-09 15:28:20.814965
+6,Default permission,Default permission,auth.role.all,write,2025-09-09 15:28:20.823093
+7,Default permission,Default permission,auth.role.all,delete,2025-09-09 15:28:20.848286
+8,Default permission,Default permission,auth.permission.all,read,2025-09-09 15:28:20.854507
+9,Default permission,Default permission,auth.permission.all,write,2025-09-09 15:28:20.860308
+10,Default permission,Default permission,auth.permission.all,delete,2025-09-09 15:28:20.866642

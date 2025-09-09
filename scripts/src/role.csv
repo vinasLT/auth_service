@@ -1,0 +1,4 @@
+id,name,is_default,description,created_at
+1,user,0,Default role,2025-09-09 15:28:20.763524
+2,admin,0,Default role,2025-09-09 15:28:20.796263
+3,developer,0,Default role,2025-09-09 15:28:20.834757
