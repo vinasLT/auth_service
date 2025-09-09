@@ -48,9 +48,9 @@ def seed_db(engine: Engine):
 
     # Deletion order: children first, then parents (to satisfy FKs)
     delete_order = [
-        'role_permissions',
         'role',
-        'permission'
+        'permission',
+        'role_permissions',
     ]
 
     # Insertion order: parents first, then children
