@@ -2,7 +2,7 @@ from typing import Any, AsyncGenerator
 
 from sqlalchemy import create_engine, NullPool
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncSession, async_sessionmaker
-from config import settings
+from config import settings, Environment
 from utils.base_dir import BASE_DIR
 
 if settings.DEBUG:
@@ -14,7 +14,7 @@ else:
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False)
 
-engine_async: AsyncEngine = create_async_engine(SQLALCHEMY_ASYNC_DATABASE_URL, echo=False, pollclass=NullPool if settings.DEBUG else None)
+engine_async: AsyncEngine = create_async_engine(SQLALCHEMY_ASYNC_DATABASE_URL, echo=False, pollclass=NullPool if settings.ENVIRONMENT == Environment.DEVELOPMENT else None)
 AsyncSessionLocal = async_sessionmaker(
     bind=engine_async,
     expire_on_commit=False,
