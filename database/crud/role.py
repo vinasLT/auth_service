@@ -19,7 +19,7 @@ class RoleService(BaseService[Role, RoleCreate, RoleUpdate]):
 
     async def get_default_role(self):
         result = await self.session.execute(
-            select(Role).where(Role.name.is_('user'))
+            select(Role).where(Role.name == 'user')
         )
         role = result.scalar_one_or_none()
 
