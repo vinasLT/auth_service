@@ -17,25 +17,48 @@ class UserService(BaseService[User, UserCreate, UserUpdate]):
     def __init__(self, session: AsyncSession):
         super().__init__(User, session)
 
-    async def get_by_email(self, email: str, is_verified: bool = True) -> Optional[User]:
-        result = await self.session.execute(
-            select(User).where(User.email.ilike(email), User.email_verified.is_(is_verified))
-        )
+    async def get_by_email(self, email: str, is_verified: Optional[bool] = None) -> Optional[User]:
+        stmt = select(User).where(User.email.ilike(email))
+        if is_verified is not None:
+            stmt = stmt.where(User.email_verified.is_(is_verified))
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_phone_number(self, phone_number: str, is_verified: bool = True) -> Optional[User]:
+    async def get_by_phone_number(self, phone_number: str, is_verified: Optional[bool] = None) -> Optional[User]:
         clean_phone = phone_number.lstrip('+')
 
-        result = await self.session.execute(
-            select(User).where(
-                or_(
-                    User.phone_number == clean_phone,
-                    User.phone_number == '+' + clean_phone
-                ),
-                User.phone_verified.is_(is_verified)
+        stmt = select(User).where(
+            or_(
+                User.phone_number == clean_phone,
+                User.phone_number == '+' + clean_phone
             )
         )
+        if is_verified is not None:
+            stmt = stmt.where(User.phone_verified.is_(is_verified))
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_all_by_phone_number(
+            self,
+            phone_number: str,
+            exclude_user_id: Optional[int] = None,
+            is_verified: Optional[bool] = None
+    ) -> List[User]:
+        clean_phone = phone_number.lstrip('+')
+
+        stmt = select(User).where(
+            or_(
+                User.phone_number == clean_phone,
+                User.phone_number == '+' + clean_phone
+            )
+        )
+        if is_verified is not None:
+            stmt = stmt.where(User.phone_verified.is_(is_verified))
+        if exclude_user_id is not None:
+            stmt = stmt.where(User.id != exclude_user_id)
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def get_all_users(
             self,

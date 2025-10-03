@@ -72,27 +72,18 @@ class TestUserRegistration:
     async def test_registration_with_different_verification_states(
             self, client, session, email_verified, phone_verified, expected_status
     ):
+        print(email_verified, phone_verified)
         user = await self._create_user(
             session,
             email_verified=email_verified,
             phone_verified=phone_verified
         )
+        print(user.id)
+
 
         response = await self._register_user(client, user)
+        print(response.json())
         assert response.status_code == expected_status
-
-    async def test_registration_with_shared_unverified_phone(self, client, session):
-        users = await self._create_users(session, [
-            {"email_verified": False, "phone_verified": False},
-            {"email_verified": True, "phone_verified": False, "phone_number": ''}
-        ])
-
-        users[1].phone_number = users[0].phone_number
-        await session.commit()
-
-        response = await self._register_user(client, users[0])
-        assert response.status_code == 201
-
 
 
     async def test_register_success(self, client: AsyncClient, session: AsyncSession, mock_auth_service):
@@ -111,6 +102,7 @@ class TestUserRegistration:
         assert response.status_code == 201
 
         data = response.json()
+        print(data)
         assert data["email"] == payload["email"]
 
         created = await session.get(User, data["id"])

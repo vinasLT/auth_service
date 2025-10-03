@@ -41,28 +41,6 @@ class TestSendCode:
         assert "code" in payload
         assert "expire_minutes" in payload
 
-    async def test_send_code_sms_where_phone_number_exists_but_not_verified(self, client: AsyncClient, session: AsyncSession, mock_rabbit_mq):
-        user = UserFactory.build(
-            phone_number="1234567890",
-            email="test@example.com",
-            phone_verified=False
-        )
-        user_with_same_unverified_phone = UserFactory.build(
-            phone_number="1234567890",
-            phone_verified=False
-        )
-        session.add(user)
-        session.add(user_with_same_unverified_phone)
-        await session.commit()
-        await session.refresh(user)
-        await session.refresh(user_with_same_unverified_phone)
-
-        response = await client.post(f"v1/verification-code/{user_with_same_unverified_phone.uuid_key}/sms/send-code")
-        print(response.json())
-        assert response.status_code == 200
-        assert response.json() == {"message": "Code sent"}
-        mock_rabbit_mq.publish.assert_called_once()
-
 
 
     async def test_send_code_success_sms(self, client: AsyncClient, session: AsyncSession, mock_rabbit_mq):

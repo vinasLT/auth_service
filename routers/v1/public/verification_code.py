@@ -31,16 +31,13 @@ async def send_code(
         raise NotFoundProblem(detail="User not found")
 
     if destination == Destination.EMAIL:
-        verified_email = await user_service.get_by_email(user.email)
+        verified_email = await user_service.get_by_email(user.email, is_verified=True)
         if verified_email:
             raise BadRequestProblem(detail="This email already verified")
     else:
-        verified_phone_number = await user_service.get_by_phone_number(user.phone_number)
+        verified_phone_number = await user_service.get_by_phone_number(user.phone_number, is_verified=True)
         if verified_phone_number:
             raise BadRequestProblem(detail="This phone number already verified")
-
-
-
 
     sender = VerificationCodeSender(db, rabbit_mq_service)
     return await sender.send_code(user, destination, VerificationCodeRoutingKey.ACCOUNT_VERIFICATION)

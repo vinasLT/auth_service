@@ -7,7 +7,6 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from database.models import Base
 
 if TYPE_CHECKING:
-    from database.models.many_to_many.user_role import UserRole
     from database.models.role import Role
 
 
@@ -23,9 +22,9 @@ class User(Base):
     language: Mapped[str] = mapped_column(String, default='en')
 
     password_hash: Mapped[str] = mapped_column(String)
-    email: Mapped[str] = mapped_column(String, index=True)
+    email: Mapped[str] = mapped_column(String, index=True, unique=True)
     username: Mapped[str] = mapped_column(String, index=True)
-    phone_number: Mapped[str] = mapped_column(String, index=True)
+    phone_number: Mapped[str] = mapped_column(String, index=True, unique=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -1,9 +1,11 @@
 from fastapi import Depends, APIRouter, Body, Request, Security, Response
 from rfc9457 import UnauthorisedProblem, ServerProblem, Problem
-from sqlalchemy.exc import MultipleResultsFound
+from sqlalchemy.exc import MultipleResultsFound, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, UTC, timedelta
 import uuid
+
+from starlette import status
 
 from auth.service import AuthService, TokenType
 from base_checks import check_user
@@ -47,130 +49,105 @@ auth_v1_router = APIRouter()
 )
 async def register(
         user_data: UserIn = Body(..., description="User registration payload"),
+        response: Response = None,
         db: AsyncSession = Depends(get_async_db),
         auth_service: AuthService = Depends(get_auth_service),
 ) -> User:
-    logger.info(f'Registration attempt', extra={
-        "email": user_data.email,
-        "phone_number": user_data.phone_number
-    })
-
+    logger.info('Registration attempt', extra={"email": user_data.email, "phone_number": user_data.phone_number})
     try:
         user_service = UserService(db)
-
-        try:
-            result_email = await user_service.get_by_email(str(user_data.email))
-            result_phone_number = await user_service.get_by_phone_number(str(user_data.phone_number))
-        except MultipleResultsFound:
-            logger.error(f'Registration failed - Multiple results found for email or phone number', extra={
-                "email": user_data.email,
-                "phone_number": user_data.phone_number
-            })
-            raise ServerProblem(
-                detail="Multiple results found for email or phone number"
-            )
-
-        # Обработка существующего email
-        if result_email:
-            if result_email.email_verified:
-                logger.warning(f'Registration failed - email already registered and verified', extra={
-                    "email": user_data.email,
-                    "existing_user_id": result_email.id,
-                })
-                raise RegisteredWithPresentCredentialsProblem(
-                    detail="Email already registered and verified"
-                )
-            else:
-                # Email не подтвержден - обновляем данные пользователя и возвращаем его
-                logger.info(f'Found unverified user with email, updating user data', extra={
-                    "email": user_data.email,
-                    "existing_user_id": result_email.id,
-                })
-
-                password_hash = auth_service.hash_password(user_data.password)
-                result_email.password_hash = password_hash
-                result_email.phone_number = user_data.phone_number
-                result_email.first_name = user_data.first_name
-                result_email.last_name = user_data.last_name
-
-                await db.commit()
-                await db.refresh(result_email)
-
-                logger.info(f'Registration successful - updated existing unverified user', extra={
-                    "email": user_data.email,
-                    "phone_number": user_data.phone_number,
-                    "user_id": result_email.id,
-                    "user_uuid": result_email.uuid_key
-                })
-
-                return result_email
-
-        # Обработка существующего телефона (только если email не существует)
-        if result_phone_number:
-            # Проверяем, подтвержден ли телефон
-            if hasattr(result_phone_number, 'phone_verified') and result_phone_number.phone_verified:
-                # Телефон подтвержден - возвращаем ошибку
-                logger.warning(f'Registration failed - phone number already registered and verified', extra={
-                    "phone_number": user_data.phone_number,
-                    "existing_user_id": result_phone_number.id,
-                })
-                raise RegisteredWithPresentCredentialsProblem(
-                    detail="Phone number already registered and verified"
-                )
-        # Создаем нового пользователя, если не нашли существующего с неподтвержденным email
         role_service = RoleService(db)
         user_role_service = UserRoleService(db)
 
+        email_value = str(user_data.email)
+        phone_value = user_data.phone_number
+
+
+        try:
+            by_email = await user_service.get_by_email(email_value)
+            by_phone = await user_service.get_by_phone_number(phone_value)
+            logger.debug('Checking for existing credentials', extra={"email": by_email, "phone_number": by_phone})
+
+        except MultipleResultsFound:
+            logger.error('Registration failed - Multiple results found', extra={"email": email_value, "phone_number": phone_value})
+            raise ServerProblem(detail="Multiple results found for email or phone number")
+
+        if by_email and getattr(by_email, "email_verified", False):
+            logger.warning('Registration failed - email verified', extra={"email": email_value, "user_id": by_email.id})
+            raise RegisteredWithPresentCredentialsProblem(detail="Email already registered and verified")
+
+        if by_phone and getattr(by_phone, "phone_verified", False):
+            logger.warning('Registration failed - phone verified', extra={"phone_number": phone_value, "user_id": by_phone.id})
+            raise RegisteredWithPresentCredentialsProblem(detail="Phone number already registered and verified")
+
+        if by_email:
+            if by_phone and by_phone.id != by_email.id:
+                by_phone.phone_number = ''
+                await db.flush()
+            by_email.phone_number = phone_value
+            by_email.first_name = user_data.first_name
+            by_email.last_name = user_data.last_name
+            by_email.password_hash = auth_service.hash_password(user_data.password)
+            try:
+                await db.commit()
+                await db.refresh(by_email)
+            except IntegrityError as ie:
+                await db.rollback()
+                logger.error('Integrity error on update (email branch)', extra={"email": email_value, "phone_number": phone_value, "error": str(ie)})
+                raise RegisteredWithPresentCredentialsProblem(detail="Email or phone number already registered")
+            logger.info('Updated unverified user by email', extra={"user_id": by_email.id, "uuid": by_email.uuid_key})
+            response.status_code = status.HTTP_201_CREATED
+            return by_email
+
+        if by_phone:
+            by_phone.email = email_value
+            by_phone.username = email_value.split('@')[0]
+            by_phone.first_name = user_data.first_name
+            by_phone.last_name = user_data.last_name
+            by_phone.password_hash = auth_service.hash_password(user_data.password)
+            try:
+                await db.commit()
+                await db.refresh(by_phone)
+            except IntegrityError as ie:
+                await db.rollback()
+                logger.error('Integrity error on update (phone branch)', extra={"email": email_value, "phone_number": phone_value, "error": str(ie)})
+                raise RegisteredWithPresentCredentialsProblem(detail="Email or phone number already registered")
+            logger.info('Updated unverified user by phone', extra={"user_id": by_phone.id, "uuid": by_phone.uuid_key})
+            response.status_code = status.HTTP_201_CREATED
+            return by_phone
+
         password_hash = auth_service.hash_password(user_data.password)
         default_role = await role_service.get_default_role()
-
-        logger.debug(f'Creating new user', extra={
-            "email": user_data.email,
-            "default_role_id": default_role.id,
-            "default_role_name": default_role.name
-        })
-
         user_uuid = str(uuid.uuid4())
+
         new_user_data = UserCreate(
             uuid_key=user_uuid,
             password_hash=password_hash,
             email=user_data.email,
-            phone_number=user_data.phone_number,
-            username=str(user_data.email).split('@')[0],
+            phone_number=phone_value,
+            username=email_value.split('@')[0],
             first_name=user_data.first_name,
             last_name=user_data.last_name,
         )
 
-        user = await user_service.create(new_user_data, flush=True)
+        try:
+            user = await user_service.create(new_user_data, flush=True)
+            await user_role_service.create(UserRoleCreate(user_id=user.id, role_id=default_role.id))
+            await db.commit()
+            await db.refresh(user)
+        except IntegrityError as ie:
+            await db.rollback()
+            logger.error('Integrity error on create', extra={"email": email_value, "phone_number": phone_value, "error": str(ie)})
+            raise RegisteredWithPresentCredentialsProblem(detail="Email or phone number already registered")
 
-        logger.debug(f'User created, assigning role', extra={
-            "user_id": user.id,
-            "user_uuid": user_uuid,
-            "role_id": default_role.id
-        })
-
-        user_role_data = UserRoleCreate(user_id=user.id, role_id=default_role.id)
-        await user_role_service.create(user_role_data)
-        await user_service.session.commit()
-
-        logger.info(f'Registration successful', extra={
-            "email": user_data.email,
-            "phone_number": user_data.phone_number,
-            "user_id": user.id,
-            "user_uuid": user_uuid
-        })
-
+        logger.info('Registration successful', extra={"user_id": user.id, "uuid": user_uuid})
+        response.status_code = status.HTTP_201_CREATED
         return user
 
     except Problem:
         raise
     except Exception as e:
-        logger.error(f'Registration failed - unexpected error', extra={
-            "email": user_data.email,
-            "phone_number": user_data.phone_number,
-            "error": str(e),
-            "error_type": type(e).__name__
-        })
+        logger.error('Registration failed - unexpected error', extra={"email": user_data.email, "phone_number": user_data.phone_number, "error": str(e), "error_type": type(e).__name__})
         raise
 
 
