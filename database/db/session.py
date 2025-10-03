@@ -14,7 +14,7 @@ else:
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False)
 
-engine_async: AsyncEngine = create_async_engine(SQLALCHEMY_ASYNC_DATABASE_URL, echo=False, pollclass=NullPool if settings.ENVIRONMENT == Environment.DEVELOPMENT else None)
+engine_async: AsyncEngine = create_async_engine(SQLALCHEMY_ASYNC_DATABASE_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(
     bind=engine_async,
     expire_on_commit=False,
