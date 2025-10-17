@@ -127,6 +127,7 @@ class AuthService(Signer):
             "aud": self.audience,
             "sub": user.uuid_key,
             "email": user.email,
+            'phone_number': user.phone_number,
             'email_verified': user.email_verified,
             'phone_verified': user.phone_verified,
             'first_name': user.first_name,
