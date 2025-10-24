@@ -35,6 +35,7 @@ dependencies = [
     "fastapi-pagination (>=0.14.0,<0.15.0)",
     "asgi-lifespan (>=2.1.0,<3.0.0)",
     "pandas (>=2.3.2,<3.0.0)",
+    "greenlet (>=3.2.4,<4.0.0)",
 ]
 
 

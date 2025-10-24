@@ -7,14 +7,19 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dependencies.security import get_current_user
+from tests.factories.token_session_user_factories import UserFactory
+
 
 @pytest.mark.asyncio
 class TestVerify:
 
     async def test_verify_success(self, client: AsyncClient, session: AsyncSession, get_app):
+        user = UserFactory.build(uuid_key="test-key")
+        session.add(user)
+        await session.commit()
         try:
             mock_current_user_data = {
-                "sub": str(uuid.uuid4()),
+                "sub": 'test-key',
                 "jti": "mock-access-jti",
                 "email": 'test@email.com',
                 "roles": ['user'],

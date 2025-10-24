@@ -31,6 +31,10 @@ async def verify_request(request: Request, payload: dict = Security(get_current_
         user_service = UserService(db)
 
         user = await user_service.get_user_by_uuid(str(payload.get("sub")))
+        if not user:
+            logger.warning(f'Authentication failed - user not found', extra={'user_uuid': payload.get('sub'),
+                                                                             'jti': payload.get('jti')})
+            raise UnauthorisedProblem("User not found")
         roles_permissions = await user_service.extract_roles_and_permissions_from_user(user_id=user.id, user=user)
 
 
