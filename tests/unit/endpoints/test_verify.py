@@ -3,10 +3,11 @@ from datetime import datetime, timezone
 
 import uuid
 
+from asyncpg.pgproto.pgproto import timedelta
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from dependencies.security import get_current_user
+from dependencies.security import get_current_user, JWTUser
 from tests.factories.token_session_user_factories import UserFactory
 
 
@@ -18,15 +19,9 @@ class TestVerify:
         session.add(user)
         await session.commit()
         try:
-            mock_current_user_data = {
-                "sub": 'test-key',
-                "jti": "mock-access-jti",
-                "email": 'test@email.com',
-                "roles": ['user'],
-                'permissions': ['read:user', 'write:user'],
-                "exp": datetime.now(timezone.utc).timestamp(),
-                "type": "access"
-            }
+            mock_current_user_data = JWTUser(id='test-key', token_jti='fwejfhwe', email='test@mail.com', first_name='test', last_name='test',
+                    token_expires=datetime.now(timezone.utc)+ timedelta(days=1))
+
             get_app.dependency_overrides[get_current_user] = lambda: mock_current_user_data
 
             headers = {

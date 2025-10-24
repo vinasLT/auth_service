@@ -44,14 +44,14 @@ async def verify_request(request: Request, payload: JWTUser = Security(get_curre
         permissions = ",".join(roles_permissions.get("permissions", []))
 
         response_headers = {
-            "X-User-ID": str(payload.get('sub')),
-            "X-User-Email": payload.get("email", ""),
+            "X-User-ID": str(payload.id),
+            "X-User-Email": payload.email,
             "X-User-Role": roles,
-            "X-Token-Expires": str(payload.get("exp", "")),
+            "X-Token-Expires": str(payload.token_expires),
             "X-Permissions": permissions
         }
 
-        logger.info(f"Authentication successful for user: {payload.get('sub')}")
+        logger.info(f"Authentication successful for user: {payload.id}")
 
         return JSONResponse(
             status_code=200,
