@@ -91,10 +91,12 @@ async def get_current_user(
     token = credentials.credentials
     payload = await auth_service.verify_token(token)
     if not payload:
+        logger.warning("Invalid token")
         raise UnauthorisedProblem(detail="Invalid token")
 
     is_blacklisted = await auth_service.is_token_blacklisted(TokenType.ACCESS, str(payload.get("jti")))
     if is_blacklisted:
+        logger.warning("Token revoked")
         raise UnauthorisedProblem(detail="Token revoked")
 
     return extract_user_from_payload(payload)
