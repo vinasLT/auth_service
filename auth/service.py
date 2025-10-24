@@ -16,6 +16,7 @@ from rfc9457 import UnauthorisedProblem
 
 from auth.kms_sign import Signer
 from config import settings
+from core.logger import logger
 from database.models import User
 
 class TokenType(str, Enum):
@@ -174,8 +175,10 @@ class AuthService(Signer):
             return payload
 
         except jwt.ExpiredSignatureError:
+            logger.exception("Token has expired")
             raise UnauthorisedProblem(detail="Token has expired")
         except jwt.InvalidTokenError as e:
+            logger.exception("Invalid token")
             raise UnauthorisedProblem(detail=f"Invalid token: {str(e)}")
 
 
