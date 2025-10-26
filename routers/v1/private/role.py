@@ -49,7 +49,7 @@ async def create_one_role(role: CreateRoleIn = Body(...), db: AsyncSession = Dep
     try:
         new_role = await role_service.create_with_permissions(role)
     except IntegrityError as e:
-        logger.exception('Error while creating role')
+        logger.exception('Error while creating role:', extra={'error': e})
         await db.rollback()
         raise ConflictProblem(detail='Role already exists')
     return new_role
