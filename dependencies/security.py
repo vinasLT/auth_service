@@ -3,7 +3,7 @@ from typing import Dict, Optional, Any
 
 import jwt
 from fastapi import Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyCookie
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import Field, BaseModel, field_validator, ValidationError
 from rfc9457 import UnauthorisedProblem
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,11 +87,11 @@ class JWTUser(BaseModel):
 
 
 async def get_current_user(
-        credentials: str | None = Depends(security_JWT),
+        credentials: HTTPAuthorizationCredentials | None = Depends(security_JWT),
         auth_service: AuthService = Depends(get_auth_service),
         db: AsyncSession = Depends(get_async_db)
 ) -> JWTUser:
-    token = credentials
+    token = credentials.credentials
     payload = await auth_service.verify_token(token)
     if not payload:
         logger.warning("Invalid token")
