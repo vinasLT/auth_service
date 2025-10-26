@@ -17,9 +17,7 @@ from database.db.session import get_async_db
 
 from deps import get_auth_service
 
-# security_JWT = HTTPBearer()
-security_JWT = APIKeyCookie(name="access_token")
-
+security_JWT = HTTPBearer()
 
 class JWTUser(BaseModel):
     id: str = Field(..., description="User UUID")
