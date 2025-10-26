@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.service import AuthService, TokenType
 from config import Permissions
+from core.logger import logger
 from database.crud.refresh_token import RefreshTokenService
 from database.crud.role import RoleService
 from database.crud.user import UserService
@@ -48,6 +49,7 @@ async def create_one_role(role: CreateRoleIn = Body(...), db: AsyncSession = Dep
     try:
         new_role = await role_service.create_with_permissions(role)
     except IntegrityError as e:
+        logger.exception('Error while creating role')
         await db.rollback()
         raise ConflictProblem(detail='Role already exists')
     return new_role
