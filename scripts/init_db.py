@@ -81,6 +81,36 @@ def seed_db(engine: Engine):
             df['is_default'] = _coerce_bool_series(df['is_default'])
         df.to_sql(table, engine, if_exists='append', index=False)
 
+    with engine.begin() as conn:
+        if engine.dialect.name == 'postgresql':
+            conn.execute(text('''DO $$
+                DECLARE
+                  r record;
+                BEGIN
+                  FOR r IN
+                    SELECT
+                      n.nspname AS sch,
+                      c.relname AS tbl,
+                      a.attname AS col,
+                      pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) AS seq
+                    FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+                    JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
+                    WHERE c.relkind IN ('r','p')
+                      AND n.nspname NOT IN ('pg_catalog','information_schema','pg_toast')
+                      AND pg_get_expr(d.adbin, d.adrelid) LIKE 'nextval(%'
+                  LOOP
+                    IF r.seq IS NOT NULL THEN
+                      EXECUTE format(
+                        'SELECT setval(%L, GREATEST(COALESCE(MAX(%I),0)+1,1), false) FROM %I.%I',
+                        r.seq, r.col, r.sch, r.tbl
+                      );
+                    END IF;
+                  END LOOP;
+                END $$;
+            '''))
+
 
 if __name__ == '__main__':
     seed_db(engine)
