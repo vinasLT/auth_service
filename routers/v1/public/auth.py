@@ -197,11 +197,8 @@ async def login(request: Request,
             "email": credentials.email
         })
 
-        roles_permissions = await user_service.extract_roles_and_permissions_from_user(user.id)
-
         access_token_payload = await auth_service.get_payload_for_token(
             user=user,
-            roles_permissions=roles_permissions,
             token_type=TokenType.ACCESS
         )
         refresh_token_payload = await auth_service.get_payload_for_token(

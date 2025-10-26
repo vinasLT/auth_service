@@ -113,7 +113,6 @@ class AuthService(Signer):
 
 
     async def get_payload_for_token(self, token_type: TokenType, user: User,
-                                    roles_permissions: Dict[str, list[str]] = None,
                                     token_family:str = None) -> Dict[str, Any]:
         if token_type == TokenType.ACCESS:
             ttl_seconds = self.access_token_ttl
@@ -144,11 +143,6 @@ class AuthService(Signer):
             if not token_family:
                 token_family = str(uuid.uuid4())
             payload.update({'token_family': token_family})
-        else:
-            if roles_permissions:
-                payload.update(roles_permissions)
-            else:
-                raise ValueError("Missing roles_permissions for access token")
 
         return payload
 

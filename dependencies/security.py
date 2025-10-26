@@ -3,18 +3,22 @@ from typing import Dict, Optional, Any
 
 import jwt
 from fastapi import Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyCookie
 from pydantic import Field, BaseModel, field_validator, ValidationError
 from rfc9457 import UnauthorisedProblem
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.service import AuthService, TokenType
 from config import Permissions
 from core.logger import logger
 from custom_exceptions import NotEnoughPermissionsProblem
+from database.crud.user import UserService
+from database.db.session import get_async_db
 
 from deps import get_auth_service
 
-security_JWT = HTTPBearer()
+# security_JWT = HTTPBearer()
+security_JWT = APIKeyCookie(name="access_token")
 
 
 class JWTUser(BaseModel):
@@ -85,10 +89,11 @@ class JWTUser(BaseModel):
 
 
 async def get_current_user(
-        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_JWT),
+        credentials: str | None = Depends(security_JWT),
         auth_service: AuthService = Depends(get_auth_service),
+        db: AsyncSession = Depends(get_async_db)
 ) -> JWTUser:
-    token = credentials.credentials
+    token = credentials
     payload = await auth_service.verify_token(token)
     if not payload:
         logger.warning("Invalid token")
@@ -99,7 +104,18 @@ async def get_current_user(
         logger.warning("Token revoked")
         raise UnauthorisedProblem(detail="Token revoked")
 
-    return extract_user_from_payload(payload)
+    user_service = UserService(db)
+    user = await user_service.get_user_by_uuid(str(payload.get("sub")))
+    if not user:
+        logger.warning(f'Authentication failed - user not found', extra={'user_uuid': payload.get("sub"),
+                                                                             'jti': payload.get("jti")})
+        raise UnauthorisedProblem("User not found")
+    roles_permissions = await user_service.extract_roles_and_permissions_from_user(user_id=user.id, user=user)
+
+    user = extract_user_from_payload(payload)
+    user.role = roles_permissions.get("roles", [])
+    user.permissions = roles_permissions.get("permissions", [])
+    return user
 
 
 def decode_jwt_without_signature(token: str) -> Dict[str, Any]:
@@ -115,32 +131,20 @@ def decode_jwt_without_signature(token: str) -> Dict[str, Any]:
         })
         raise UnauthorisedProblem(detail=f"Invalid JWT token: {str(e)}")
 
-
-async def get_user_without_check(
-        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_JWT)
-) -> JWTUser:
-    token = credentials.credentials
-    payload = decode_jwt_without_signature(token)
-    return extract_user_from_payload(payload)
-
-
 def extract_user_from_payload(payload: Dict[str, Any]) -> JWTUser:
     user_uuid = payload.get("sub")
     first_name = payload.get("first_name")
     last_name = payload.get("last_name")
     email = payload.get("email")
-    roles = payload.get("roles")
-    permissions = payload.get("permissions")
     token_expires = payload.get("exp")
     jti = payload.get("jti")
+
     try:
         user = JWTUser(
             id=user_uuid,
             first_name=first_name,
             last_name=last_name,
             email=email,
-            role=roles,
-            permissions=permissions,
             token_expires=token_expires,
             token_jti=jti
         )
