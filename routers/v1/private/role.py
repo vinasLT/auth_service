@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, Body, Request
+from fastapi import APIRouter, Depends, Path, Body, Request, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from rfc9457 import NotFoundProblem, ConflictProblem
 from sqlalchemy.exc import IntegrityError
@@ -18,16 +18,17 @@ from schemas.request_schemas.role import CreateRoleIn, UpdateRoleIn
 from schemas.response_schemas.users import FullUserOut
 from utils.pagination_page import create_pagination_page
 
-roles_router = APIRouter( prefix='/role')
+roles_router = APIRouter(prefix='/role')
 
 RolePage = create_pagination_page(RoleReadWithPermissions)
 
 
 @roles_router.get("", response_model=RolePage, description='Get all roles', name='get_all_roles',
                               dependencies=[Depends(require_all_permissions(Permissions.ROLES_READ_ALL))])
-async def get_all_roles(db: AsyncSession = Depends(get_async_db)):
+async def get_all_roles(search: str | None = Query(default='', description='Search by name and description'),
+                        db: AsyncSession = Depends(get_async_db)):
     role_service = RoleService(db)
-    stmt = await role_service.get_all(get_stmt=True)
+    stmt = await role_service.get_all_with_search(get_stmt=True, search=search)
     return await paginate(db, stmt)
 
 
@@ -112,6 +113,35 @@ async def manage_user_role(
     if last_user_refresh_token:
         await auth_service.blacklist_token(TokenType.ACCESS, last_user_refresh_token.jti)
 
+    return user
+
+@roles_router.put(
+    "/user/{user_uuid}",
+    description='Assign roles to user batch',
+    name='assign_role_to_user',
+    response_model=FullUserOut,
+    dependencies=[Depends(require_all_permissions(Permissions.ROLES_WRITE_ALL,
+                                                    Permissions.USERS_WRITE_ALL))])
+async def assign_role_to_user(
+        user_uuid: str = Path(..., description='User UUID'),
+        role_ids: list[int] = Body(..., description='Role ID'),
+        db: AsyncSession = Depends(get_async_db),
+):
+    user_service = UserService(db)
+    role_service = RoleService(db)
+    user = await user_service.get_user_by_uuid(user_uuid)
+    if not user:
+        raise NotFoundProblem(detail="User not found")
+
+    try:
+        roles = await role_service.get_roles_batch(role_ids)
+    except ValueError as e:
+        raise NotFoundProblem(detail=str(e))
+
+    user.roles = list(roles)
+
+    await db.commit()
+    await db.refresh(user)
     return user
 
 

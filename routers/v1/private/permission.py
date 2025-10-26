@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Body, Path, Request
+from fastapi import APIRouter, Depends, Body, Path, Request, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from rfc9457 import NotFoundProblem
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,9 +18,10 @@ PermissionPage = create_pagination_page(PermissionRead)
 
 @permissions_router.get("", response_model=PermissionPage, description='Get all permissions',
                               dependencies=[Depends(require_all_permissions(Permissions.PERMISSIONS_READ_ALL))])
-async def get_all_permissions(db: AsyncSession = Depends(get_async_db)):
+async def get_all_permissions(search: str | None = Query(default='', description='Search by name and description'),
+                              db: AsyncSession = Depends(get_async_db)):
     permission_service = PermissionService(db)
-    stmt = await permission_service.get_all(get_stmt=True)
+    stmt = await permission_service.get_all_with_search(get_stmt=True, search=search)
     return await paginate(db, stmt)
 
 @permissions_router.get("/{permission_id}", response_model=PermissionRead, description='Get one permission',

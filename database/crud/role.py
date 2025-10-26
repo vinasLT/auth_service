@@ -1,5 +1,7 @@
+from typing import Any, Coroutine, Sequence
+
 from rfc9457 import BadRequestProblem, NotFoundProblem
-from sqlalchemy import select
+from sqlalchemy import select, Row, RowMapping, Select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logger import logger
@@ -16,6 +18,14 @@ class RoleService(BaseService[Role, RoleCreate, RoleUpdate]):
 
     def __init__(self, session: AsyncSession):
         super().__init__(Role, session)
+
+    async def get_all_with_search(self, search: str | None, get_stmt: bool = False)-> Select[tuple[Role]] | Sequence[Role]:
+        stmt = select(Role).where(
+            or_(Role.name.icontains(search), Role.description.icontains(search)))
+        if get_stmt:
+            return stmt
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
 
     async def get_default_role(self):
         result = await self.session.execute(
@@ -107,6 +117,19 @@ class RoleService(BaseService[Role, RoleCreate, RoleUpdate]):
         await self.session.refresh(role)
 
         return role
+
+    async def get_roles_batch(self, ids: list[int]) -> Sequence[Role]:
+        if not ids:
+            return []
+        result = await self.session.execute(select(Role).where(Role.id.in_(ids)))
+        roles = result.scalars().all()
+
+        found_ids = {r.id for r in roles}
+        missing = [i for i in ids if i not in found_ids]
+
+        if missing:
+            raise ValueError(f"Not all roles found. Missing ids: {missing}")
+        return roles
 
 
 
