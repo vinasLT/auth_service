@@ -13,7 +13,6 @@ from core.logger import logger
 
 
 def _coerce_bool_series(series: pd.Series) -> pd.Series:
-    """Coerce a pandas Series with values like 0/1, "0"/"1", "true"/"false" to booleans."""
     true_vals = {"1", "true", "t", "yes", "y"}
     false_vals = {"0", "false", "f", "no", "n"}
 
@@ -27,7 +26,6 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
             return True
         if s in false_vals:
             return False
-
         try:
             return bool(int(s))
         except Exception:
@@ -36,32 +34,61 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
     return series.map(to_bool)
 
 
-def seed_db(engine: Engine):
+def reset_all_sequences(db_engine: Engine):
+    sql = """
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT
+      n.nspname AS sch,
+      c.relname AS tbl,
+      a.attname AS col,
+      pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) AS seq
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+    JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
+    WHERE c.relkind IN ('r','p')
+      AND n.nspname NOT IN ('pg_catalog','information_schema','pg_toast')
+      AND pg_get_expr(d.adbin, d.adrelid) LIKE 'nextval(%'
+  LOOP
+    IF r.seq IS NOT NULL THEN
+      EXECUTE format(
+        'SELECT setval(%L, COALESCE((SELECT MAX(%I) FROM %I.%I), 0))',
+        r.seq, r.col, r.sch, r.tbl
+      );
+    END IF;
+  END LOOP;
+END $$;
+"""
+    with db_engine.begin() as conn:
+        conn.execute(text(sql))
+
+
+def seed_db(db_engine: Engine):
     src_dir = CURRENT_FILE.parent / 'src'
 
     tables = {
         'permission': src_dir / 'permission.csv',
         'role': src_dir / 'role.csv',
         'role_permissions': src_dir / 'role_permissions.csv',
-
     }
 
-    # Deletion order: children first, then parents (to satisfy FKs)
     delete_order = [
         'role_permissions',
         'role',
         'permission',
     ]
 
-    # Insertion order: parents first, then children
     insert_order = [
         'permission',
         'role',
         'role_permissions'
     ]
 
-    # Phase 1: delete existing data without dropping tables (preserve schema & FKs)
-    with engine.begin() as conn:
+    with db_engine.begin() as conn:
         for table in delete_order:
             logger.info(f'Clearing table {table}')
             try:
@@ -69,7 +96,6 @@ def seed_db(engine: Engine):
             except Exception as e:
                 logger.warning(f'Failed to delete from {table}: {e}')
 
-    # Phase 2: insert data
     for table in insert_order:
         path = tables[table]
         logger.info(f'Seeding table {table} from {path}')
@@ -79,41 +105,10 @@ def seed_db(engine: Engine):
             continue
         if table == 'role' and 'is_default' in df.columns:
             df['is_default'] = _coerce_bool_series(df['is_default'])
-        df.to_sql(table, engine, if_exists='append', index=False)
+        df.to_sql(table, db_engine, if_exists='append', index=False)
 
-    with engine.begin() as conn:
-        if engine.dialect.name == 'postgresql':
-            conn.execute(text('''DO $$
-                DECLARE
-                    r record;
-                    max_id bigint;
-                BEGIN
-                    FOR r IN
-                        SELECT
-                            c.table_schema AS sch,
-                            c.table_name AS tbl,
-                            c.column_name AS col,
-                            pg_get_serial_sequence(format('%I.%I', c.table_schema, c.table_name), c.column_name) AS seq
-                        FROM information_schema.columns c
-                        WHERE c.table_schema NOT IN ('pg_catalog','information_schema')
-                          AND (
-                              c.column_default LIKE 'nextval%' OR
-                              c.is_identity = 'YES'
-                          )
-                    LOOP
-                        IF r.seq IS NOT NULL THEN
-                            EXECUTE format('SELECT COALESCE(MAX(%I),0) FROM %I.%I', r.col, r.sch, r.tbl)
-                            INTO max_id;
-
-                            EXECUTE format(
-                                'SELECT setval(%L, %s, true)',
-                                r.seq,
-                                max_id
-                            );
-                        END IF;
-                    END LOOP;
-                END $$;
-            '''))
+    logger.info('Resetting all sequences to match current max ids')
+    reset_all_sequences(db_engine)
 
 
 if __name__ == '__main__':
