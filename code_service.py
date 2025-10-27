@@ -1,3 +1,5 @@
+import asyncio
+
 from sqlalchemy.ext.asyncio import AsyncSession
 import secrets
 from core.logger import logger
@@ -61,6 +63,25 @@ class VerificationCodeSender:
         logger.info(f'Code sent', extra=payload)
 
         return {"message": "Code sent"}
+
+if __name__ == "__main__":
+    async def main():
+        payload = {
+            "user_uuid": 'oijkf309430fjdpsof',
+            'code': 'code',
+            'destination': 'sms',
+            'first_name': 'TEST',
+            'last_name': 'TEST',
+            'email': 'peyrovskaaa@gmail.com',
+            'expire_minutes': CodeService.CODE_EXPIRY_MINUTES,
+            'phone_number': '+380634379178'
+        }
+        servbice = RabbitMQPublisher()
+        await servbice.connect()
+        await servbice.publish(routing_key=VerificationCodeRoutingKey.ACCOUNT_VERIFICATION, payload=payload)
+        logger.info(f'Code sent', extra=payload)
+    asyncio.run(main())
+
 
 
 
