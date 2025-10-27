@@ -90,22 +90,21 @@ def seed_db(engine: Engine):
                 BEGIN
                     FOR r IN
                         SELECT
-                            n.nspname AS sch,
-                            c.relname AS tbl,
-                            a.attname AS col,
-                            pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) AS seq
-                        FROM pg_class c
-                        JOIN pg_namespace n ON n.oid = c.relnamespace
-                        JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
-                        JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
-                        WHERE c.relkind IN ('r','p')
-                          AND n.nspname NOT IN ('pg_catalog','information_schema','pg_toast')
-                          AND pg_get_expr(d.adbin, d.adrelid) LIKE 'nextval(%'
+                            c.table_schema AS sch,
+                            c.table_name AS tbl,
+                            c.column_name AS col,
+                            pg_get_serial_sequence(format('%I.%I', c.table_schema, c.table_name), c.column_name) AS seq
+                        FROM information_schema.columns c
+                        WHERE c.table_schema NOT IN ('pg_catalog','information_schema')
+                          AND (
+                              c.column_default LIKE 'nextval%' OR
+                              c.is_identity = 'YES'
+                          )
                     LOOP
                         IF r.seq IS NOT NULL THEN
                             EXECUTE format('SELECT COALESCE(MAX(%I),0) FROM %I.%I', r.col, r.sch, r.tbl)
                             INTO max_id;
-                
+
                             EXECUTE format(
                                 'SELECT setval(%L, %s, true)',
                                 r.seq,
