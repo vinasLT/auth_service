@@ -353,7 +353,6 @@ async def refresh_token_pair(
             "refresh_token_id": refresh_token.id
         })
 
-        roles_permissions = await user_service.extract_roles_and_permissions_from_user(user.id)
 
         family_id = str(payload.get("token_family"))
 
