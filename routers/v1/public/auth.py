@@ -385,7 +385,6 @@ async def refresh_token_pair(
         )
         new_access_payload = await auth_service.get_payload_for_token(
             user=user,
-            roles_permissions=roles_permissions,
             token_type=TokenType.ACCESS
         )
 
