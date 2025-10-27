@@ -39,6 +39,11 @@ def reset_all_sequences(db_engine: Engine):
 DO $$
 DECLARE
   r record;
+  max_id bigint;
+  seq_reg regclass;
+  seq_schema text;
+  seq_name text;
+  startv bigint;
 BEGIN
   FOR r IN
     SELECT
@@ -53,10 +58,25 @@ BEGIN
       AND n.nspname NOT IN ('pg_catalog','information_schema','pg_toast')
   LOOP
     IF r.seq IS NOT NULL THEN
-      EXECUTE format(
-        'SELECT setval(%L, COALESCE((SELECT MAX(%I) FROM %I.%I), 0), true)',
-        r.seq, r.col, r.sch, r.tbl
-      );
+      seq_reg := r.seq::regclass;
+      SELECT ns.nspname, cl.relname
+      INTO seq_schema, seq_name
+      FROM pg_class cl
+      JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+      WHERE cl.oid = seq_reg;
+
+      SELECT start_value
+      INTO startv
+      FROM pg_sequences
+      WHERE schemaname = seq_schema AND sequencename = seq_name;
+
+      EXECUTE format('SELECT MAX(%I) FROM %I.%I', r.col, r.sch, r.tbl) INTO max_id;
+
+      IF max_id IS NULL THEN
+        EXECUTE format('SELECT setval(%L, %s, false)', r.seq, startv);
+      ELSE
+        EXECUTE format('SELECT setval(%L, %s, true)', r.seq, max_id);
+      END IF;
     END IF;
   END LOOP;
 END $$;
