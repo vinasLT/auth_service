@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from database.crud.base import BaseService
-from database.models import UserRole, Role
+from database.models import UserRole, Role, Permission
 from database.models.many_to_many.role_permission import RolePermission
 from database.models.user import User
 from database.schemas.user import UserCreate, UserUpdate
@@ -103,7 +103,7 @@ class UserService(BaseService[User, UserCreate, UserUpdate]):
         return result.scalar_one_or_none()
 
 
-    async def extract_roles_and_permissions_from_user(self, user_id: int, user: User = None) -> Dict[str, List[str]]:
+    async def extract_roles_and_permissions_from_user(self, user_id: int, user: User = None) -> dict[str, list[str]]:
 
         if not user or (hasattr(user, 'roles') and user.roles is None):
             user = await self.get(user_id)
