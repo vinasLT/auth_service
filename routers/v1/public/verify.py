@@ -46,9 +46,9 @@ async def verify_request(request: Request, payload: JWTUser = Security(get_curre
         response_headers = {
             "X-User-ID": str(payload.id),
             "X-User-Email": payload.email,
-            "X-User-Role": roles,
+            "X-User-Role": roles.strip(),
             "X-Token-Expires": str(payload.token_expires),
-            "X-Permissions": permissions
+            "X-Permissions": permissions.strip()
         }
 
         logger.info(f"Authentication successful for user: {payload.id}")
