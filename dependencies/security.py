@@ -56,6 +56,7 @@ class JWTUser(BaseModel):
             try:
                 return datetime.fromtimestamp(int(v))
             except (ValueError, OSError):
+                logger.exception("Invalid token expiration date")
                 return None
         return v
 
@@ -91,28 +92,89 @@ async def get_current_user(
         auth_service: AuthService = Depends(get_auth_service),
         db: AsyncSession = Depends(get_async_db)
 ) -> JWTUser:
+    logger.debug("get_current_user called")
+    if not credentials:
+        logger.warning("Authorization credentials missing")
+        raise UnauthorisedProblem(detail="Authorization header required")
+
+    logger.debug(
+        "Authorization credentials received",
+        extra={
+            "auth_scheme": credentials.scheme,
+        }
+    )
+
     token = credentials.credentials
-    payload = await auth_service.verify_token(token)
+    try:
+        payload = await auth_service.verify_token(token)
+    except Exception as exc:
+        logger.exception(
+            "Token verification failed",
+            extra={
+                "error": str(exc),
+            }
+        )
+        raise
+
     if not payload:
         logger.warning("Invalid token")
         raise UnauthorisedProblem(detail="Invalid token")
+
+    logger.debug(
+        "Token verified successfully",
+        extra={
+            "user_uuid": payload.get("sub"),
+            "jti": payload.get("jti"),
+            "expires": payload.get("exp"),
+        }
+    )
 
     is_blacklisted = await auth_service.is_token_blacklisted(TokenType.ACCESS, str(payload.get("jti")))
     if is_blacklisted:
         logger.warning("Token revoked")
         raise UnauthorisedProblem(detail="Token revoked")
 
+    logger.debug(
+        "Token not blacklisted",
+        extra={
+            "user_uuid": payload.get("sub"),
+            "jti": payload.get("jti"),
+        }
+    )
+
     user_service = UserService(db)
+    logger.debug(
+        "Fetching user from database",
+        extra={
+            "user_uuid": payload.get("sub"),
+        }
+    )
     user = await user_service.get_user_by_uuid(str(payload.get("sub")))
     if not user:
         logger.warning(f'Authentication failed - user not found', extra={'user_uuid': payload.get("sub"),
                                                                              'jti': payload.get("jti")})
         raise UnauthorisedProblem("User not found")
     roles_permissions = await user_service.extract_roles_and_permissions_from_user(user_id=user.id, user=user)
+    logger.debug(
+        "Extracted roles and permissions for user",
+        extra={
+            "user_uuid": payload.get("sub"),
+            "roles_count": len(roles_permissions.get("roles", [])),
+            "permissions_count": len(roles_permissions.get("permissions", [])),
+        }
+    )
 
     user = extract_user_from_payload(payload)
     user.role = roles_permissions.get("roles", [])
     user.permissions = roles_permissions.get("permissions", [])
+    logger.info(
+        "Successfully retrieved current user",
+        extra={
+            "user_uuid": user.id,
+            "roles": user.role,
+            "permissions": user.permissions,
+        }
+    )
     return user
 
 
