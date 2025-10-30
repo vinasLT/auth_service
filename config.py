@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     AWS_REGION: str = "eu-north-1"
     AWS_ACCESS_KEY_ID: str = 'test-key'
     AWS_SECRET_ACCESS_KEY: str = 'test-key'
-    AWS_KMS_KEY_ARN: str = 'arn:aws:kms:eu-north-1:533266961080:key/71dc53ed-5b1d-43fe-b8ca-5a4ba731cc90'
+    AWS_KMS_KEY_ARN: str = 'arn:aws:kms:eu-north-1:669409472579:key/a0e62c95-68a4-4cb2-814f-7b02b654a878'
 
     # Security
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
