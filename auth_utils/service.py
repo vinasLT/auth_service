@@ -14,7 +14,7 @@ import json
 
 from rfc9457 import UnauthorisedProblem
 
-from auth.kms_sign import Signer
+from auth_utils.kms_sign import Signer
 from config import settings
 from core.logger import logger
 from database.models import User

@@ -4,7 +4,7 @@ from rfc9457 import NotFoundProblem, ConflictProblem
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.service import AuthService, TokenType
+from auth_utils.service import AuthService, TokenType
 from config import Permissions
 from core.logger import logger
 from database.crud.refresh_token import RefreshTokenService

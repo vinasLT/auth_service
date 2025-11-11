@@ -8,7 +8,7 @@ from pydantic import Field, BaseModel, field_validator, ValidationError
 from rfc9457 import UnauthorisedProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.service import AuthService, TokenType
+from auth_utils.service import AuthService, TokenType
 from config import Permissions
 from core.logger import logger
 from custom_exceptions import NotEnoughPermissionsProblem

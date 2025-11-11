@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import StaticPool
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, async_sessionmaker, AsyncSession
 
-from auth.service import AuthService, TokenType
+from auth_utils.service import AuthService, TokenType
 from dependencies.security import RequirePermission
 from deps import get_auth_service, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
