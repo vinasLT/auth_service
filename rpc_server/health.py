@@ -9,6 +9,7 @@ class HealthCheckServicer(health_pb2_grpc.HealthServicer):
         )
 
     def Watch(self, request, context):
-        return health_pb2.HealthCheckResponse(
+        # Health Watch is a server-stream RPC, so we yield at least one status update.
+        yield health_pb2.HealthCheckResponse(
             status=health_pb2.HealthCheckResponse.SERVING
         )
