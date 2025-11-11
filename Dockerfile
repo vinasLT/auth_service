@@ -5,9 +5,11 @@ ENV POETRY_VIRTUALENVS_CREATE=false \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Установка зависимостей системы
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    wget \
     libpq-dev \
     pkg-config \
     postgresql-client \
