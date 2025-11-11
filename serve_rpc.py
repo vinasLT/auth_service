@@ -5,16 +5,27 @@ import grpc
 import signal
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'rpc_server', 'gen', 'python'))
+
 from grpc_health.v1 import health_pb2_grpc, health_pb2
 from grpc_reflection.v1alpha import reflection
 
-from rpc_server.gen.python.auth.v1 import auth_pb2, auth_pb2_grpc
+# Ensure generated gRPC modules under services/rpc_server_client/gen/python can be resolved.
+sys.path.insert(
+    0,
+    os.path.join(
+        os.path.dirname(__file__),
+        'services',
+        'rpc_server_client',
+        'gen',
+        'python',
+    ),
+)
+
 from config import settings, Environment
 from core.logger import logger
-from rpc_server.health import HealthCheckServicer
-from rpc_server.auth_rcp import AuthRcp
-
+from services.rpc_server_client.health import HealthCheckServicer
+from services.rpc_server_client.auth_rcp import AuthRcp
+from auth.v1 import auth_pb2_grpc, auth_pb2
 
 class GracefulServer:
     def __init__(self):

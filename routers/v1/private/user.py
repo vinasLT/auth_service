@@ -1,8 +1,10 @@
+import grpc
 from fastapi import APIRouter, Depends, Query, Path
-from rfc9457 import NotFoundProblem
+from rfc9457 import NotFoundProblem, BadRequestProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import Permissions
+from core.logger import logger
 from database.crud.user import UserService
 from database.db.session import get_async_db
 
@@ -11,7 +13,8 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from database.schemas.user import UserRead
 from dependencies.security import JWTUser, require_all_permissions
 from schemas.request_schemas.users import UserSearchIn
-from schemas.response_schemas.users import FullUserOut, UserWithRolePermission
+from schemas.response_schemas.users import FullUserOut, UserWithRolePermission, DetailedUser, UserAccount, Plan
+from services.rpc_server_client.account import AccountRpcClient
 from utils.pagination_page import create_pagination_page
 
 user_control_router = APIRouter(prefix="/user")
@@ -28,7 +31,7 @@ async def user_router(data: UserSearchIn = Query(...),
     stmt = await user_service.get_all_users(get_stmt=True, search=data.search, include_inactive=data.include_inactive)
     return await paginate(db, stmt)
 
-@user_control_router.get("/me", response_model=UserWithRolePermission, description='Get current user')
+@user_control_router.get("/me", response_model=DetailedUser, description='Get current user')
 async def user_router(current_user: JWTUser = Depends(require_all_permissions(Permissions.USERS_READ_OWN)),
                       db: AsyncSession = Depends(get_async_db)):
     user_service = UserService(db)
@@ -40,12 +43,29 @@ async def user_router(current_user: JWTUser = Depends(require_all_permissions(Pe
         user_id=db_user.id,
         user=db_user,
     )
+    user_account: UserAccount
+    try:
+        async with AccountRpcClient() as rpc_client:
+            account = await rpc_client.get_account_info(user_uuid=current_user.id)
+            plan = Plan(
+                name=account.plan.name,
+                description=account.plan.description,
+                bid_power=account.plan.bid_power,
+                price=account.plan.price,
+                max_bid_one_time=account.plan.max_bid_one_time
+            )
+            user_account = UserAccount(balance=account.balance, plan=plan)
+    except grpc.aio.AioRpcError as e:
+        logger.exception(f"Error on get account by uuid: {e.details()}")
+        raise BadRequestProblem(detail=f"Error on get account by uuid: {e.details()}")
 
     base_user = UserRead.model_validate(db_user)
-    return UserWithRolePermission(
+
+    return DetailedUser(
         **base_user.model_dump(),
         roles=roles_permissions.get("roles", []),
         permissions=roles_permissions.get("permissions", []),
+        account=user_account
     )
 
 

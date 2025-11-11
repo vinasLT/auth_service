@@ -1,9 +1,17 @@
+import os
+import sys
+
 import grpc
 
 from core.logger import logger
 from database.crud.user import UserService
 from database.db.session import get_db
-from rpc_server.gen.python.auth.v1 import auth_pb2, auth_pb2_grpc
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'services', 'rpc_server_client', 'gen', 'python'))
+
+from services.rpc_server_client.gen.python.auth.v1 import auth_pb2, auth_pb2_grpc
+
+
+
 
 
 class AuthRcp(auth_pb2_grpc.AuthServiceServicer):
