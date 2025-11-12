@@ -22,4 +22,5 @@ id,name,description,resource,action,created_at
 21,Favorites Own Write,Favorites own write access,favorites.own,write,2025-09-09 15:28:21.000010
 22,Favorites Own Read,Favorites own read access,favorites.own,read,2025-09-09 15:28:21.000011
 23,Favorites Own Delete,Favorites own delete access,favorites.own,delete,2025-09-09 15:28:21.000012
+24,Favorites All Write,Favorites all write access,favorites.all,write,2025-09-09 15:28:21.000013
 25,Favorites All Read,Favorites all read access,favorites.all,read,2025-09-09 15:28:21.000014

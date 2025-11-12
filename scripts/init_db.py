@@ -35,6 +35,9 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
 
 
 def reset_all_sequences(db_engine: Engine):
+    if db_engine.dialect.name != "postgresql":
+        logger.info("Skipping sequence reset for non-PostgreSQL dialect")
+        return
     sql = """
 DO $$
 DECLARE
