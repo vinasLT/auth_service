@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Security, Request
 from fastapi.params import Depends
 from fastapi.responses import JSONResponse
-from rfc9457 import UnauthorisedProblem
+from rfc9457 import UnauthorisedProblem, ForbiddenProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logger import logger
@@ -58,6 +58,6 @@ async def verify_request(request: Request, payload: JWTUser = Security(get_curre
 
     except Exception as e:
         logger.error(f"Authentication error: {e}")
-        return UnauthorisedProblem(
+        return ForbiddenProblem(
             detail="Authentication failed"
         )
