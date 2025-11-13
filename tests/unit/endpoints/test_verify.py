@@ -39,9 +39,12 @@ class TestVerify:
 
 
     async def test_verify_fail(self, client: AsyncClient, session: AsyncSession, get_app):
-        get_app.dependency_overrides.clear()
-        response = await client.get("/v1/verify")
-        print(response.json())
-        print(response.status_code)
-        assert response.status_code == 401
-
+        override_current_user = get_app.dependency_overrides.pop(get_current_user, None)
+        try:
+            response = await client.get("/v1/verify")
+            print(response.json())
+            print(response.status_code)
+            assert response.status_code == 401
+        finally:
+            if override_current_user:
+                get_app.dependency_overrides[get_current_user] = override_current_user
