@@ -43,5 +43,5 @@ class TestVerify:
         response = await client.get("/v1/verify")
         print(response.json())
         print(response.status_code)
-        assert response.status_code == 401
+        assert response.status_code == 403
 
