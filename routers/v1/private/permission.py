@@ -60,12 +60,6 @@ async def delete_one_permission(permission_id: int, db: AsyncSession = Depends(g
     await permission_service.delete(permission_id)
     return {'success': True}
 
-@permissions_router.api_route("/{permission_id}/role/{role_id}", response_model=RoleReadWithPermissions,
-                              methods=["POST", "DELETE"], description='Assign/Unassign permission to/from role',
-                              dependencies=[Depends(require_all_permissions(Permissions.PERMISSIONS_WRITE_ALL,
-                                                                            Permissions.PERMISSIONS_READ_ALL,
-                                                                            Permissions.ROLES_READ_ALL,
-                                                                            Permissions.ROLES_WRITE_ALL))])
 async def manage_role_permission(request: Request, permission_id: int = Path(..., description='Permission ID'),
                                  role_id: int = Path(..., description='Role ID'),
                                  db: AsyncSession = Depends(get_async_db)):
@@ -84,5 +78,17 @@ async def manage_role_permission(request: Request, permission_id: int = Path(...
     return role
 
 
-
+for method in ["POST", "DELETE"]:
+    permissions_router.add_api_route(
+        "/{permission_id}/role/{role_id}",
+        manage_role_permission,
+        methods=[method],
+        response_model=RoleReadWithPermissions,
+        description='Assign/Unassign permission to/from role',
+        dependencies=[Depends(require_all_permissions(Permissions.PERMISSIONS_WRITE_ALL,
+                                                      Permissions.PERMISSIONS_READ_ALL,
+                                                      Permissions.ROLES_READ_ALL,
+                                                      Permissions.ROLES_WRITE_ALL))],
+        operation_id=f"manage_role_permission_{method.lower()}",
+    )
 

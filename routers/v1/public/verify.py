@@ -30,15 +30,12 @@ async def verify_request(request: Request, payload: JWTUser = Security(get_curre
 
         user_service = UserService(db)
 
-        print(payload.id)
-
         user = await user_service.get_user_by_uuid(str(payload.id))
         if not user:
             logger.warning(f'Authentication failed - user not found', extra={'user_uuid': payload.id,
                                                                              'jti': payload.token_jti})
             raise UnauthorisedProblem("User not found")
         roles_permissions = await user_service.extract_roles_and_permissions_from_user(user_id=user.id, user=user)
-
 
         roles = ",".join(roles_permissions.get("roles", []))
         permissions = ",".join(roles_permissions.get("permissions", []))
@@ -64,5 +61,3 @@ async def verify_request(request: Request, payload: JWTUser = Security(get_curre
         return UnauthorisedProblem(
             detail="Authentication failed"
         )
-
-

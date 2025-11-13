@@ -36,12 +36,22 @@ dependencies = [
     "asgi-lifespan (>=2.1.0,<3.0.0)",
     "pandas (>=2.3.2,<3.0.0)",
     "greenlet (>=3.2.4,<4.0.0)",
+    "grpcio (>=1.76.0,<2.0.0)",
+    "grpcio-tools (>=1.76.0,<2.0.0)",
+    "protobuf (>=6.33.0,<7.0.0)",
+    "googleapis-common-protos (>=1.72.0,<2.0.0)",
+    "grpcio-reflection (>=1.76.0,<2.0.0)",
+    "grpcio-health-checking (>=1.76.0,<2.0.0)",
 ]
 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry]
+package-mode = false
 
 [tool.poetry.group.dev.dependencies]
 aiosqlite = "^0.21.0"

@@ -7,7 +7,7 @@ import uuid
 
 from starlette import status
 
-from auth.service import AuthService, TokenType
+from auth_utils.service import AuthService, TokenType
 from base_checks import check_user
 from config import settings, Environment
 from core.logger import logger

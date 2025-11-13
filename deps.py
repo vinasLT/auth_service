@@ -2,7 +2,7 @@ from typing import Any, AsyncGenerator, Callable
 
 from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
-from auth.service import AuthService
+from auth_utils.service import AuthService
 import aioboto3
 import redis
 from aioboto3 import Session

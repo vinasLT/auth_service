@@ -4,7 +4,7 @@ from rfc9457 import NotFoundProblem, ConflictProblem
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.service import AuthService, TokenType
+from auth_utils.service import AuthService, TokenType
 from config import Permissions
 from core.logger import logger
 from database.crud.refresh_token import RefreshTokenService
@@ -77,14 +77,6 @@ async def delete_one_role(role_id: int, db: AsyncSession = Depends(get_async_db)
     return {'success': True}
 
 
-@roles_router.api_route("/{role_id}/user/{user_uuid}",
-                        methods=["POST", "DELETE"],
-                        response_model=FullUserOut,
-                        dependencies=[Depends(require_all_permissions(Permissions.ROLES_WRITE_ALL,
-                                                                        Permissions.ROLES_READ_ALL,
-                                                                        Permissions.USERS_WRITE_ALL,
-                                                                        Permissions.USERS_READ_ALL))],
-                        description='Assign/Unassign role to/from user')
 async def manage_user_role(
         request: Request,
         role_id: int = Path(..., description='Role ID'),
@@ -114,6 +106,22 @@ async def manage_user_role(
         await auth_service.blacklist_token(TokenType.ACCESS, last_user_refresh_token.jti)
 
     return user
+
+
+for method in ["POST", "DELETE"]:
+    roles_router.add_api_route(
+        "/{role_id}/user/{user_uuid}",
+        manage_user_role,
+        methods=[method],
+        response_model=FullUserOut,
+        dependencies=[Depends(require_all_permissions(Permissions.ROLES_WRITE_ALL,
+                                                      Permissions.ROLES_READ_ALL,
+                                                      Permissions.USERS_WRITE_ALL,
+                                                      Permissions.USERS_READ_ALL))],
+        description='Assign/Unassign role to/from user',
+        operation_id=f"manage_user_role_{method.lower()}",
+    )
+
 
 @roles_router.put(
     "/user/{user_uuid}",

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Body, Depends
 from rfc9457 import NotFoundProblem, BadRequestProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.service import AuthService
+from auth_utils.service import AuthService
 from base_checks import check_user
 from custom_exceptions import InvalidCodeProblem
 

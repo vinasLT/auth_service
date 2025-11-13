@@ -9,3 +9,18 @@ id,name,description,resource,action,created_at
 8,Default permission,Default permission,auth.permission.all,read,2025-09-09 15:28:20.854507
 9,Default permission,Default permission,auth.permission.all,write,2025-09-09 15:28:20.860308
 10,Default permission,Default permission,auth.permission.all,delete,2025-09-09 15:28:20.866642
+11,Bid Own Write,Bid own write access,bid.own,write,2025-09-09 15:28:21.000000
+12,Bid Own Read,Bid own read access,bid.own,read,2025-09-09 15:28:21.000001
+13,Bid All Read,Bid all read access,bid.all,read,2025-09-09 15:28:21.000002
+14,Bid All Write,Bid all write access,bid.all,write,2025-09-09 15:28:21.000003
+15,Payments Plan All Read,Payments plan all read access,payments.plan.all,read,2025-09-09 15:28:21.000004
+16,Payments Plan All Write,Payments plan all write access,payments.plan.all,write,2025-09-09 15:28:21.000005
+17,Payments Plan All Delete,Payments plan all delete access,payments.plan.all,delete,2025-09-09 15:28:21.000006
+18,Payments Account All Read,Payments account all read access,payments.account.all,read,2025-09-09 15:28:21.000007
+19,Payments Account All Write,Payments account all write access,payments.account.all,write,2025-09-09 15:28:21.000008
+20,Payments Plan Own Read,Payments plan own read access,payments.plan.own,read,2025-09-09 15:28:21.000009
+21,Favorites Own Write,Favorites own write access,favorites.own,write,2025-09-09 15:28:21.000010
+22,Favorites Own Read,Favorites own read access,favorites.own,read,2025-09-09 15:28:21.000011
+23,Favorites Own Delete,Favorites own delete access,favorites.own,delete,2025-09-09 15:28:21.000012
+24,Favorites All Write,Favorites all write access,favorites.all,write,2025-09-09 15:28:21.000013
+25,Favorites All Read,Favorites all read access,favorites.all,read,2025-09-09 15:28:21.000014

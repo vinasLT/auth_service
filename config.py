@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     RABBITMQ_URL: str = "amqp://guest:guest@localhost/"
     RABBITMQ_EXCHANGE_NAME: str = 'events'
 
+    # rpc
+    GRPC_SERVER_PORT: int = 50054
+
+    RPC_PAYMENT_URL: str ="localhost:50053"
+
 
     model_config = SettingsConfigDict(env_file=".env")
 
