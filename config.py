@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     # rpc
     GRPC_SERVER_PORT: int = 50054
 
-    RPC_PAYMENT_URL: str ="localhost:50053"
+    RPC_PAYMENT_URL: str = "localhost:50053"
 
 
     model_config = SettingsConfigDict(env_file=".env")
