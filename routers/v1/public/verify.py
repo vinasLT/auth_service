@@ -1,3 +1,5 @@
+from typing import Iterable
+
 from fastapi import APIRouter, Security, Request
 from fastapi.params import Depends
 from fastapi.responses import JSONResponse
@@ -10,6 +12,24 @@ from database.db.session import get_async_db
 from dependencies.security import get_current_user, JWTUser
 
 verify_request_router = APIRouter()
+
+
+def _clean_header_value(value: str | None) -> str:
+    """Strip new lines and spaces to keep headers h11-compliant."""
+    if not value:
+        return ""
+    return value.replace("\r", "").replace("\n", "").strip()
+
+
+def _join_header_values(items: Iterable[str]) -> str:
+    cleaned = []
+    for item in items or []:
+        if not isinstance(item, str):
+            continue
+        value = _clean_header_value(item)
+        if value:
+            cleaned.append(value)
+    return ",".join(cleaned)
 
 
 async def verify_request(request: Request, payload: JWTUser = Security(get_current_user),
@@ -38,14 +58,14 @@ async def verify_request(request: Request, payload: JWTUser = Security(get_curre
             raise UnauthorisedProblem("User not found")
         roles_permissions = await user_service.extract_roles_and_permissions_from_user(user_id=user.id, user=user)
 
-        roles = ",".join(roles_permissions.get("roles", []))
-        permissions = ",".join(roles_permissions.get("permissions", []))
+        roles = _join_header_values(roles_permissions.get("roles", []))
+        permissions = _join_header_values(roles_permissions.get("permissions", []))
 
         response_headers = {
-            "X-User-ID": str(payload.id),
-            "X-User-Email": payload.email,
+            "X-User-ID": _clean_header_value(str(payload.id)),
+            "X-User-Email": _clean_header_value(payload.email),
             "X-User-Role": roles,
-            "X-Token-Expires": str(payload.token_expires),
+            "X-Token-Expires": _clean_header_value(str(payload.token_expires)),
             "X-Permissions": permissions,
         }
 
