@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Security, Request
 from fastapi.params import Depends
 from fastapi.responses import JSONResponse
-from rfc9457 import UnauthorisedProblem, ForbiddenProblem
+from rfc9457 import ForbiddenProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.logger import logger
@@ -34,7 +34,7 @@ async def verify_request(request: Request, payload: JWTUser = Security(get_curre
         if not user:
             logger.warning(f'Authentication failed - user not found', extra={'user_uuid': payload.id,
                                                                              'jti': payload.token_jti})
-            raise UnauthorisedProblem("User not found")
+            raise ForbiddenProblem("User not found")
         roles_permissions = await user_service.extract_roles_and_permissions_from_user(user_id=user.id, user=user)
 
         roles = ",".join(roles_permissions.get("roles", []))
