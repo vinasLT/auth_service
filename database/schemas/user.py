@@ -13,6 +13,9 @@ class UserCreate(BaseModel):
     language: str = "en"
     phone_verified: Optional[bool] = False
     email_verified: Optional[bool] = False
+
+    is_created_manually: Optional[bool] = False
+
     email: EmailStr
     username: str
     phone_number: str
@@ -34,5 +37,7 @@ class UserRead(BaseModel):
     email_verified: bool
     phone_verified: bool
     created_at: datetime
+
+    is_created_manually: bool
 
     model_config = ConfigDict(from_attributes=True)

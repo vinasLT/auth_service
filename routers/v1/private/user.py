@@ -1,20 +1,23 @@
 import grpc
-from fastapi import APIRouter, Depends, Query, Path
-from rfc9457 import NotFoundProblem, BadRequestProblem
+from fastapi import APIRouter, Body, Depends, Query, Path, Response
+from rfc9457 import NotFoundProblem, BadRequestProblem, Problem
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
+from auth_utils.service import AuthService
 from config import Permissions
 from core.logger import logger
 from database.crud.user import UserService
 from database.db.session import get_async_db
-
-from fastapi_pagination.ext.sqlalchemy import paginate
-
 from database.models import User
 from database.schemas.user import UserRead
+from deps import get_auth_service
 from dependencies.security import JWTUser, require_all_permissions
+from fastapi_pagination.ext.sqlalchemy import paginate
+from schemas.request_schemas.registration import UserIn
 from schemas.request_schemas.users import UserSearchIn
 from schemas.response_schemas.users import FullUserOut, DetailedUser, UserAccount, Plan
+from services.user_registration_service import create_or_update_user
 from services.rpc_server_client.account import AccountRpcClient
 from utils.pagination_page import create_pagination_page
 
@@ -84,11 +87,53 @@ async def user_router(user_uuid: str = Path(...), db: AsyncSession = Depends(get
     return await _build_detailed_user(user_service=user_service, user_uuid=user_uuid, user=user)
 
 
-
-
-
-
-
+@user_control_router.post(
+    "/create-manually",
+    response_model=DetailedUser,
+    status_code=201,
+    description="Create new user manually",
+    dependencies=[Depends(require_all_permissions(Permissions.USERS_WRITE_ALL))],
+)
+async def create_new_user(
+    user_data: UserIn = Body(..., description="User registration payload"),
+    response: Response = None,
+    db: AsyncSession = Depends(get_async_db),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> DetailedUser:
+    logger.info(
+        "Manual user creation attempt",
+        extra={"email": user_data.email, "phone_number": user_data.phone_number},
+    )
+    try:
+        password_hash = auth_service.hash_password(user_data.password)
+        user = await create_or_update_user(
+            db,
+            user_data,
+            password_hash,
+            mark_verified=True,
+            log_context="Manual user creation",
+            is_created_manually=True,
+        )
+        user_service = UserService(db)
+        response.status_code = status.HTTP_201_CREATED
+        return await _build_detailed_user(
+            user_service=user_service,
+            user_uuid=user.uuid_key,
+            user=user,
+        )
+    except Problem:
+        raise
+    except Exception as e:
+        logger.error(
+            "Manual user creation failed - unexpected error",
+            extra={
+                "email": user_data.email,
+                "phone_number": user_data.phone_number,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+        )
+        raise
 
 
 

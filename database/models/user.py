@@ -22,11 +22,14 @@ class User(Base):
     language: Mapped[str] = mapped_column(String, default='en')
 
     password_hash: Mapped[str] = mapped_column(String)
+
     email: Mapped[str] = mapped_column(String, index=True, unique=True)
     username: Mapped[str] = mapped_column(String, index=True)
     phone_number: Mapped[str] = mapped_column(String, index=True, unique=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    is_created_manually: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
