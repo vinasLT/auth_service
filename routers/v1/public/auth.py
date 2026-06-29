@@ -1,5 +1,5 @@
 from fastapi import Depends, APIRouter, Body, Request, Security, Response
-from rfc9457 import UnauthorisedProblem, Problem
+from rfc9457 import UnauthorisedProblem, Problem, ServerProblem
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, UTC, timedelta
 import uuid
