@@ -58,7 +58,7 @@ class VerificationCodeSender:
         }
 
         await self.rabbit_mq_service.publish(routing_key=routing_key.value, payload=payload)
-        logger.info(f'Code sent', extra=payload)
+        logger.info(f'Code sent', extra=payload[])
 
         return {"message": "Code sent"}
 
