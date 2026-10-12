@@ -25,3 +25,6 @@ id,name,description,resource,action,created_at
 24,write bid own,,bid.own,write,2025-11-13 08:35:25.16559+00
 25,read favorites all,,favorites.all,read,2025-11-13 08:36:20.156396+00
 26,write favorites all,,favorites.all,write,2025-11-13 08:36:28.699061+00
+27,Read own referral stats,Read own referral stats,auth.referral.own,read,2026-10-12 15:00:00.000000+00
+28,Read all referral stats,Read all referral stats,auth.referral.all,read,2026-10-12 15:00:00.000000+00
+29,Manage referral wallets,Manage referral wallets,auth.referral.all,write,2026-10-12 15:00:00.000000+00

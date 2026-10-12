@@ -13,7 +13,7 @@ from config import settings
 from custom_exceptions import raise_rate_limiter_error
 from database.crud.singin_key import SigningKeyService
 from database.db.session import get_async_db
-from rabbit_service.service import RabbitMQPublisher
+from services.rabbit_service.service import RabbitMQPublisher
 from rate_limit_ids import user_identifier
 
 async def get_redis_client()-> AsyncGenerator[Redis, Any]:

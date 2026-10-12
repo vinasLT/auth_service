@@ -1,5 +1,5 @@
 import re
-from typing import Annotated
+from typing import Annotated, Optional
 
 from pydantic import StringConstraints, BaseModel, EmailStr, Field, field_validator
 
@@ -81,4 +81,17 @@ class UserIn(EmailPassIn):
         json_schema_extra={"example": "Doe"},
         min_length=1,
         max_length=32,
+    )
+
+
+class RegistrationIn(UserIn):
+    referral_code: Optional[str] = Field(
+        None,
+        description="Referral code from the referral link",
+        json_schema_extra={"example": "AB2CD3EF"},
+        max_length=32,
+    )
+    referral_visit_id: Optional[int] = Field(
+        None,
+        description="Visit id returned by POST /v1/referral/visit",
     )

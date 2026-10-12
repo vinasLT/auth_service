@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from database.db.session import get_async_db
 from database.models import Base
 from deps import get_redis_client, get_auth_service, get_rabbit_mq_service
-from rabbit_service.service import RabbitMQPublisher
+from services.rabbit_service.service import RabbitMQPublisher
 from dependencies.security import get_current_user, require_all_permissions
 from scripts.init_db import seed_db
 from tests.moks import get_test_redis_client, mock_auth_service, mock_get_current_user, mock_rabbit_mq, \

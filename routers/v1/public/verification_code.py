@@ -10,7 +10,7 @@ from database.db.session import get_async_db
 from database.models.verification_code import Destination, VerificationCodeRoutingKey
 from database.schemas.user import UserUpdate
 from deps import get_rate_limiter, get_rabbit_mq_service
-from rabbit_service.service import RabbitMQPublisher
+from services.rabbit_service.service import RabbitMQPublisher
 from schemas.request_schemas.registration import EmailIn
 from schemas.request_schemas.verification_code import CodeIn
 

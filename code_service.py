@@ -7,7 +7,7 @@ from custom_exceptions import TooManyRequests
 from database.crud.verification_code import VerificationCodeService
 from database.models import User
 from database.models.verification_code import Destination, VerificationCodeRoutingKey
-from rabbit_service.service import RabbitMQPublisher
+from services.rabbit_service.service import RabbitMQPublisher
 
 
 class CodeService:

@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from rfc9457 import ServerProblem
 from sqlalchemy.exc import IntegrityError, MultipleResultsFound
@@ -13,6 +14,8 @@ from database.models import User
 from database.schemas.many_to_many.user_role import UserRoleCreate
 from database.schemas.user import UserCreate
 from schemas.request_schemas.registration import UserIn
+from services.referral.code import generate_unique_referral_code
+from services.referral.referral_service import ReferralService
 
 
 async def create_or_update_user(
@@ -23,10 +26,13 @@ async def create_or_update_user(
     mark_verified: bool = False,
     log_context: str = "Registration",
     is_created_manually: bool = False,
+    referral_code: Optional[str] = None,
+    referral_visit_id: Optional[int] = None,
 ) -> User:
     user_service = UserService(db)
     role_service = RoleService(db)
     user_role_service = UserRoleService(db)
+    referral_service = ReferralService(db)
 
     email_value = str(user_data.email)
     phone_value = user_data.phone_number
@@ -70,7 +76,10 @@ async def create_or_update_user(
         if mark_verified:
             by_email.email_verified = True
             by_email.phone_verified = True
+        if not by_email.referral_code:
+            by_email.referral_code = await generate_unique_referral_code(db)
         try:
+            await referral_service.attach_referrer(by_email, referral_code, referral_visit_id)
             await db.commit()
             await db.refresh(by_email)
         except IntegrityError as ie:
@@ -95,7 +104,10 @@ async def create_or_update_user(
         if mark_verified:
             by_phone.email_verified = True
             by_phone.phone_verified = True
+        if not by_phone.referral_code:
+            by_phone.referral_code = await generate_unique_referral_code(db)
         try:
+            await referral_service.attach_referrer(by_phone, referral_code, referral_visit_id)
             await db.commit()
             await db.refresh(by_phone)
         except IntegrityError as ie:
@@ -125,10 +137,12 @@ async def create_or_update_user(
         email_verified=mark_verified,
         phone_verified=mark_verified,
         is_created_manually=is_created_manually,
+        referral_code=await generate_unique_referral_code(db),
     )
 
     try:
         user = await user_service.create(new_user_data, flush=True)
+        await referral_service.attach_referrer(user, referral_code, referral_visit_id)
         await user_role_service.create(UserRoleCreate(user_id=user.id, role_id=default_role.id))
         await db.commit()
         await db.refresh(user)

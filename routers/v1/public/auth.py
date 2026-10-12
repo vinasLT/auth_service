@@ -24,7 +24,7 @@ from database.schemas.user_session import UserSessionCreate, UserSessionUpdate
 from deps import get_auth_service, get_rate_limiter
 from schemas.request_schemas.logout import LogoutRequest
 from schemas.request_schemas.refresh import RefreshTokenIn
-from schemas.request_schemas.registration import UserIn, EmailPassIn
+from schemas.request_schemas.registration import EmailPassIn, RegistrationIn
 from schemas.request_schemas.token import TokenResponse
 from dependencies.security import get_current_user
 from services.user_registration_service import create_or_update_user
@@ -42,7 +42,7 @@ auth_v1_router = APIRouter()
     dependencies=[get_rate_limiter(times=15, seconds=120)]
 )
 async def register(
-        user_data: UserIn = Body(..., description="User registration payload"),
+        user_data: RegistrationIn = Body(..., description="User registration payload"),
         response: Response = None,
         db: AsyncSession = Depends(get_async_db),
         auth_service: AuthService = Depends(get_auth_service),
@@ -50,7 +50,13 @@ async def register(
     logger.info('Registration attempt', extra={"email": user_data.email, "phone_number": user_data.phone_number})
     try:
         password_hash = auth_service.hash_password(user_data.password)
-        user = await create_or_update_user(db, user_data, password_hash)
+        user = await create_or_update_user(
+            db,
+            user_data,
+            password_hash,
+            referral_code=user_data.referral_code,
+            referral_visit_id=user_data.referral_visit_id,
+        )
         response.status_code = status.HTTP_201_CREATED
         return user
     except Problem:

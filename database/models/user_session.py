@@ -10,7 +10,7 @@ from database.models import Base
 class UserSession(Base):
     __tablename__ = "user_sessions"
 
-    id: Mapped[int] = mapped_column(primary_key=True, unique=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
 

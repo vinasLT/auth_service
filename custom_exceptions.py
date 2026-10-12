@@ -38,6 +38,10 @@ class NotEnoughPermissionsProblem(ForbiddenProblem):
     title = "Not enough permissions"
     detail = "Not enough permissions"
 
+class InsufficientWalletBalanceProblem(BadRequestProblem):
+    type = "insufficient-wallet-balance"
+    title = "Insufficient wallet balance"
+
 
 async def raise_code_rate_limiter_error(request: Request, response: Response, pexpire: int):
     raise TooManyRequests(

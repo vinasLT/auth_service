@@ -1,6 +1,8 @@
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional, Callable
 import redis
+from aio_pika import connect_robust
 from fastapi import FastAPI, APIRouter
 from fastapi_limiter import FastAPILimiter
 from fastapi_pagination import add_pagination
@@ -8,11 +10,16 @@ from fastapi_problem.handler import add_exception_handler, new_exception_handler
 
 from config import settings
 from core.logger import logger
+from database.db.session import AsyncSessionLocal
+from services.rabbit_service.referral_consumer import ReferralRabbitConsumer
+from services.rabbit_service.routing_keys import RoutingKeys
 from routers.v1.private.permission import permissions_router
+from routers.v1.private.referral import referral_router
 from routers.v1.private.role import roles_router
 from routers.v1.private.user import user_control_router
 from routers.v1.public.auth import auth_v1_router
 from routers.v1.public.password_reset import password_reset_router
+from routers.v1.public.referral import referral_public_router
 from routers.v1.public.verification_code import verification_code_router
 from routers.v1.public.verify import verify_request_router
 
@@ -30,11 +37,13 @@ def setup_routers(app: FastAPI):
     v1_router.include_router(verify_request_router, tags=["internal"])
     v1_router.include_router(verification_code_router, prefix="/verification-code", tags=["verification-code"])
     v1_router.include_router(password_reset_router, prefix="/password-reset", tags=["password-reset"])
+    v1_router.include_router(referral_public_router, prefix="/referral", tags=["referral"])
 
     private_router = APIRouter(prefix="/private")
     private_router.include_router(user_control_router, tags=["user"])
     private_router.include_router(roles_router, tags=["roles"])
     private_router.include_router(permissions_router, tags=["permissions"])
+    private_router.include_router(referral_router, tags=["referral"])
 
     v1_router.include_router(private_router)
     app.include_router(v1_router)
@@ -61,8 +70,36 @@ def create_app(
         if setup_limiter:
             await setup_fastapi_limiter(custom_redis_client)
 
+        max_attempts = 5
+        base_delay_s = 2
+        connection = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                connection = await connect_robust(settings.RABBITMQ_URL)
+                break
+            except Exception:
+                if attempt >= max_attempts:
+                    raise
+                delay = base_delay_s * attempt
+                logger.warning(
+                    "RabbitMQ connection failed, retrying",
+                    extra={"attempt": attempt, "delay_s": delay},
+                )
+                await asyncio.sleep(delay)
+
+        if connection is None:
+            raise RuntimeError("RabbitMQ connection not established after retries")
+        consumer = ReferralRabbitConsumer(
+            AsyncSessionLocal,
+            connection,
+            [member.value for member in RoutingKeys],
+        )
+        await consumer.set_up()
+        await consumer.start_consuming()
+
         logger.info(f"{settings.APP_NAME} started!")
         yield
+        await consumer.stop_consuming()
 
         if setup_limiter:
             await FastAPILimiter.close()

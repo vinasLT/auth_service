@@ -21,6 +21,10 @@ class Permissions(str, Enum):
     USERS_READ_OWN = "auth.user.own:read"
     USERS_WRITE_OWN = "auth.user.own:write"
 
+    REFERRAL_READ_OWN = "auth.referral.own:read"
+    REFERRAL_READ_ALL = "auth.referral.all:read"
+    REFERRAL_WRITE_ALL = "auth.referral.all:write"
+
 
 class Environment(str, Enum):
     DEVELOPMENT = "development"
@@ -64,6 +68,13 @@ class Settings(BaseSettings):
     # RabbitMQ
     RABBITMQ_URL: str = "amqp://guest:guest@localhost/"
     RABBITMQ_EXCHANGE_NAME: str = 'events'
+    RABBITMQ_QUEUE_NAME: str = 'auth.referral'
+
+    # Referral
+    REFERRAL_BASE_URL: str = 'http://localhost:3000/?ref='
+    REFERRAL_REWARD_AMOUNT_CENTS: int = 10000
+    REFERRAL_CURRENCY: str = 'EUR'
+    REFERRAL_VISIT_DEDUP_HOURS: int = 24
 
     # rpc
     GRPC_SERVER_PORT: int = 50054

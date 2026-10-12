@@ -1,7 +1,7 @@
 from datetime import datetime, UTC
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from database.models import Base
@@ -29,6 +29,11 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     is_created_manually: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    referral_code: Mapped[Optional[str]] = mapped_column(String(12), unique=True, index=True, nullable=True)
+    referred_by_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("user.id", ondelete="SET NULL", name="fk_user_referred_by_id_user"), nullable=True, index=True
+    )
     
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -16,6 +16,8 @@ class UserCreate(BaseModel):
 
     is_created_manually: Optional[bool] = False
 
+    referral_code: Optional[str] = None
+
     email: EmailStr
     username: str
     phone_number: str
@@ -39,5 +41,7 @@ class UserRead(BaseModel):
     created_at: datetime
 
     is_created_manually: bool
+
+    referral_code: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

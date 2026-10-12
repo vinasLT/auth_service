@@ -102,6 +102,12 @@ class UserService(BaseService[User, UserCreate, UserUpdate]):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_referral_code(self, referral_code: str) -> Optional[User]:
+        result = await self.session.execute(
+            select(User).where(User.referral_code == referral_code)
+        )
+        return result.scalar_one_or_none()
+
 
     async def extract_roles_and_permissions_from_user(self, user_id: int, user: User = None) -> dict[str, list[str]]:
 
