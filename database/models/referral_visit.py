@@ -1,7 +1,7 @@
 from datetime import datetime, UTC
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.models import Base
@@ -17,11 +17,7 @@ class ReferralVisit(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
     referrer_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
-    visitor_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-
-    ip_address: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    landing_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    visitor_id: Mapped[str] = mapped_column(String(64), nullable=False)
 
     converted_user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True

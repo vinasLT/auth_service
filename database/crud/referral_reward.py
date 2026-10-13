@@ -17,12 +17,3 @@ class ReferralRewardService(BaseService[ReferralReward, ReferralRewardCreate, Re
             select(ReferralReward).where(ReferralReward.external_purchase_id == external_purchase_id)
         )
         return result.scalar_one_or_none()
-
-    async def get_for_update(self, reward_id: int) -> Optional[ReferralReward]:
-        result = await self.session.execute(
-            select(ReferralReward)
-            .where(ReferralReward.id == reward_id)
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        )
-        return result.scalar_one_or_none()

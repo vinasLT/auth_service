@@ -1,6 +1,6 @@
-from typing import Optional, Sequence
+from typing import Sequence
 
-from fastapi import APIRouter, Body, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 from fastapi_pagination.ext.sqlalchemy import paginate
 from rfc9457 import NotFoundProblem
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,12 +12,7 @@ from database.db.session import get_async_db
 from database.models import User
 from database.schemas.referral import ReferralRewardRead
 from dependencies.security import JWTUser, require_all_permissions
-from deps import get_rabbit_mq_service
-from schemas.request_schemas.referral import (
-    RewardActionIn,
-    RewardFilterIn,
-    ReferrerSearchIn,
-)
+from schemas.request_schemas.referral import ReferrerSearchIn
 from schemas.response_schemas.referral import (
     MyReferralOut,
     ReferralStatsOut,
@@ -29,10 +24,8 @@ from schemas.response_schemas.referral import (
     AdminReferredUserOut,
     AdminRewardOut,
 )
-from services.rabbit_service.service import RabbitMQPublisher
 from services.referral.code import build_referral_link
 from services.referral.referral_service import ReferralService
-from services.referral.reward_service import RewardService
 from utils.masking import mask_email, mask_last_name
 from utils.pagination_page import create_pagination_page
 
@@ -50,10 +43,6 @@ async def _get_user_or_404(user_service: UserService, user_uuid: str) -> User:
     if not user:
         raise NotFoundProblem(detail="User not found")
     return user
-
-
-async def _get_admin(user_service: UserService, admin: JWTUser) -> User:
-    return await _get_user_or_404(user_service, admin.id)
 
 
 async def _build_stats(db: AsyncSession, user_id: int) -> ReferralStatsOut:
@@ -75,7 +64,6 @@ def _mask_referred_users(rows: Sequence) -> list[ReferredUserOut]:
             has_bid=row.first_bid_at is not None,
             first_bid_at=row.first_bid_at,
             purchases_paid=row.purchases_paid,
-            purchases_pending=row.purchases_pending,
         )
         for row in rows
     ]
@@ -123,12 +111,11 @@ async def get_my_referrals(
 
 @referral_router.get("/me/rewards", response_model=RewardPage, description="My referral rewards")
 async def get_my_rewards(
-        data: RewardFilterIn = Query(...),
         current_user: JWTUser = Depends(require_all_permissions(Permissions.REFERRAL_READ_OWN)),
         db: AsyncSession = Depends(get_async_db),
 ):
     user = await _get_user_or_404(UserService(db), current_user.id)
-    return await paginate(db, ReferralStatsService(db).get_rewards_stmt(user.id, data.status))
+    return await paginate(db, ReferralStatsService(db).get_rewards_stmt(user.id))
 
 
 # ---------- Admin ----------
@@ -154,39 +141,9 @@ async def get_admin_referrers(data: ReferrerSearchIn = Query(...), db: AsyncSess
 
 @referral_router.get("/admin/rewards", response_model=AdminRewardPage, description="Rewards of all users",
                      dependencies=[Depends(require_all_permissions(Permissions.REFERRAL_READ_ALL))])
-async def get_admin_rewards(data: RewardFilterIn = Query(...), db: AsyncSession = Depends(get_async_db)):
-    stmt = ReferralStatsService(db).get_admin_rewards_stmt(status=data.status)
+async def get_admin_rewards(db: AsyncSession = Depends(get_async_db)):
+    stmt = ReferralStatsService(db).get_admin_rewards_stmt()
     return await paginate(db, stmt, transformer=_admin_rewards, unique=False)
-
-
-@referral_router.post("/admin/rewards/{reward_id}/approve", response_model=RewardOut,
-                      description="Approve reward manually and credit referrer wallet")
-async def approve_reward(
-        reward_id: int = Path(...),
-        data: Optional[RewardActionIn] = Body(None),
-        admin: JWTUser = Depends(require_all_permissions(Permissions.REFERRAL_WRITE_ALL)),
-        db: AsyncSession = Depends(get_async_db),
-        publisher: RabbitMQPublisher = Depends(get_rabbit_mq_service),
-):
-    await _get_admin(UserService(db), admin)
-    return await RewardService(db, publisher).approve_reward(
-        reward_id, admin_uuid=admin.id, note=data.note if data else None
-    )
-
-
-@referral_router.post("/admin/rewards/{reward_id}/cancel", response_model=RewardOut,
-                      description="Cancel reward manually; approved rewards are reversed from the wallet")
-async def cancel_reward(
-        reward_id: int = Path(...),
-        data: Optional[RewardActionIn] = Body(None),
-        admin: JWTUser = Depends(require_all_permissions(Permissions.REFERRAL_WRITE_ALL)),
-        db: AsyncSession = Depends(get_async_db),
-        publisher: RabbitMQPublisher = Depends(get_rabbit_mq_service),
-):
-    await _get_admin(UserService(db), admin)
-    return await RewardService(db, publisher).cancel_reward(
-        reward_id, admin_uuid=admin.id, note=data.note if data else None
-    )
 
 
 @referral_router.get("/admin/users/{user_uuid}", response_model=AdminReferralUserOut,
@@ -226,9 +183,8 @@ async def get_admin_user_referrals(user_uuid: str = Path(...), db: AsyncSession 
                      dependencies=[Depends(require_all_permissions(Permissions.REFERRAL_READ_ALL))])
 async def get_admin_user_rewards(
         user_uuid: str = Path(...),
-        data: RewardFilterIn = Query(...),
         db: AsyncSession = Depends(get_async_db),
 ):
     user = await _get_user_or_404(UserService(db), user_uuid)
-    stmt = ReferralStatsService(db).get_admin_rewards_stmt(referrer_id=user.id, status=data.status)
+    stmt = ReferralStatsService(db).get_admin_rewards_stmt(referrer_id=user.id)
     return await paginate(db, stmt, transformer=_admin_rewards, unique=False)

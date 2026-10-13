@@ -15,9 +15,7 @@ class ReferralStatsOut(BaseModel):
     visits: int = 0
     registrations: int = 0
     users_with_bids: int = 0
-    purchases_pending: int = 0
     purchases_paid: int = 0
-    pending_cents: int = 0
     currency: str
 
 
@@ -35,7 +33,6 @@ class ReferredUserOut(BaseModel):
     has_bid: bool
     first_bid_at: Optional[datetime] = None
     purchases_paid: int = 0
-    purchases_pending: int = 0
 
 
 class RewardOut(ReferralRewardRead):
@@ -46,8 +43,6 @@ class AdminReferralStatsOut(BaseModel):
     total_visits: int = 0
     total_registrations: int = 0
     total_users_with_bids: int = 0
-    rewards_pending_count: int = 0
-    rewards_pending_cents: int = 0
     rewards_approved_count: int = 0
     rewards_approved_cents: int = 0
     currency: str
@@ -62,7 +57,6 @@ class ReferrerOut(BaseModel):
     visits: int = 0
     registrations: int = 0
     users_with_bids: int = 0
-    purchases_pending: int = 0
     purchases_paid: int = 0
 
 
@@ -87,7 +81,6 @@ class AdminReferredUserOut(BaseModel):
     bids_count: int = 0
     first_bid_at: Optional[datetime] = None
     purchases_paid: int = 0
-    purchases_pending: int = 0
 
 
 class AdminRewardOut(ReferralRewardRead):

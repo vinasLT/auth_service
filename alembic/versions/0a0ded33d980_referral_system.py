@@ -1,8 +1,8 @@
-"""add referral system
+"""referral system
 
-Revision ID: 604fac5b039b
+Revision ID: 0a0ded33d980
 Revises: eb0377a77536
-Create Date: 2026-10-12 15:14:25.436347
+Create Date: 2026-10-13 15:04:54.238975
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '604fac5b039b'
+revision: str = '0a0ded33d980'
 down_revision: Union[str, Sequence[str], None] = 'eb0377a77536'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -30,10 +30,7 @@ def upgrade() -> None:
     sa.Column('vin', sa.String(), nullable=True),
     sa.Column('amount_cents', sa.Integer(), nullable=False),
     sa.Column('currency', sa.String(length=3), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'CANCELLED', name='rewardstatus', native_enum=False, length=32), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('approved_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('cancelled_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['referred_user_id'], ['user.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['referrer_id'], ['user.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
@@ -42,14 +39,10 @@ def upgrade() -> None:
     op.create_index(op.f('ix_referral_reward_id'), 'referral_reward', ['id'], unique=False)
     op.create_index(op.f('ix_referral_reward_referred_user_id'), 'referral_reward', ['referred_user_id'], unique=False)
     op.create_index(op.f('ix_referral_reward_referrer_id'), 'referral_reward', ['referrer_id'], unique=False)
-    op.create_index(op.f('ix_referral_reward_status'), 'referral_reward', ['status'], unique=False)
     op.create_table('referral_visit',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('referrer_id', sa.Integer(), nullable=False),
-    sa.Column('visitor_id', sa.String(length=64), nullable=True),
-    sa.Column('ip_address', sa.String(), nullable=True),
-    sa.Column('user_agent', sa.Text(), nullable=True),
-    sa.Column('landing_url', sa.Text(), nullable=True),
+    sa.Column('visitor_id', sa.String(length=64), nullable=False),
     sa.Column('converted_user_id', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['converted_user_id'], ['user.id'], ondelete='SET NULL'),
@@ -102,7 +95,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_referral_visit_created_at'), table_name='referral_visit')
     op.drop_index(op.f('ix_referral_visit_converted_user_id'), table_name='referral_visit')
     op.drop_table('referral_visit')
-    op.drop_index(op.f('ix_referral_reward_status'), table_name='referral_reward')
     op.drop_index(op.f('ix_referral_reward_referrer_id'), table_name='referral_reward')
     op.drop_index(op.f('ix_referral_reward_referred_user_id'), table_name='referral_reward')
     op.drop_index(op.f('ix_referral_reward_id'), table_name='referral_reward')

@@ -1,11 +1,10 @@
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select, func, or_, Select, ScalarSelect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from database.models import User, Referral, ReferralVisit, ReferralReward
-from database.models.referral_reward import RewardStatus
 from schemas.request_schemas.referral import ReferrerSortField, SortOrder
 
 ReferredUser = aliased(User, name="referred_user")
@@ -38,29 +37,20 @@ def _users_with_bids_count(referrer_id: Any) -> ScalarSelect:
     )
 
 
-def _rewards_count(referrer_id: Any, status: RewardStatus) -> ScalarSelect:
+def _rewards_count(referrer_id: Any) -> ScalarSelect:
     return (
         select(func.count(ReferralReward.id))
-        .where(ReferralReward.referrer_id == referrer_id, ReferralReward.status == status)
+        .where(ReferralReward.referrer_id == referrer_id)
         .scalar_subquery()
     )
 
 
-def _rewards_sum(referrer_id: Any, status: RewardStatus) -> ScalarSelect:
-    return (
-        select(func.coalesce(func.sum(ReferralReward.amount_cents), 0))
-        .where(ReferralReward.referrer_id == referrer_id, ReferralReward.status == status)
-        .scalar_subquery()
-    )
-
-
-def _referred_user_rewards_count(referrer_id: int, status: RewardStatus) -> ScalarSelect:
+def _referred_user_rewards_count(referrer_id: int) -> ScalarSelect:
     return (
         select(func.count(ReferralReward.id))
         .where(
             ReferralReward.referrer_id == referrer_id,
             ReferralReward.referred_user_id == User.id,
-            ReferralReward.status == status,
         )
         .scalar_subquery()
     )
@@ -75,9 +65,7 @@ class ReferralStatsService:
             _visits_count(user_id).label("visits"),
             _registrations_count(user_id).label("registrations"),
             _users_with_bids_count(user_id).label("users_with_bids"),
-            _rewards_count(user_id, RewardStatus.PENDING).label("purchases_pending"),
-            _rewards_count(user_id, RewardStatus.APPROVED).label("purchases_paid"),
-            _rewards_sum(user_id, RewardStatus.PENDING).label("pending_cents"),
+            _rewards_count(user_id).label("purchases_paid"),
         )
         row = (await self.session.execute(stmt)).one()
         return dict(row._mapping)
@@ -90,25 +78,16 @@ class ReferralStatsService:
             .scalar_subquery()
         )
 
-        def rewards_count(status: RewardStatus) -> ScalarSelect:
-            return select(func.count(ReferralReward.id)).where(ReferralReward.status == status).scalar_subquery()
-
-        def rewards_sum(status: RewardStatus) -> ScalarSelect:
-            return (
-                select(func.coalesce(func.sum(ReferralReward.amount_cents), 0))
-                .where(ReferralReward.status == status)
-                .scalar_subquery()
-            )
+        rewards_count = select(func.count(ReferralReward.id)).scalar_subquery()
+        rewards_sum = select(func.coalesce(func.sum(ReferralReward.amount_cents), 0)).scalar_subquery()
 
         stmt = select(
             select(func.count(ReferralVisit.id)).scalar_subquery().label("total_visits"),
             registrations.label("total_registrations"),
             select(func.count(Referral.id)).where(Referral.first_bid_at.is_not(None))
             .scalar_subquery().label("total_users_with_bids"),
-            rewards_count(RewardStatus.PENDING).label("rewards_pending_count"),
-            rewards_sum(RewardStatus.PENDING).label("rewards_pending_cents"),
-            rewards_count(RewardStatus.APPROVED).label("rewards_approved_count"),
-            rewards_sum(RewardStatus.APPROVED).label("rewards_approved_cents"),
+            rewards_count.label("rewards_approved_count"),
+            rewards_sum.label("rewards_approved_cents"),
         )
         row = (await self.session.execute(stmt)).one()
         return dict(row._mapping)
@@ -124,7 +103,7 @@ class ReferralStatsService:
             ReferrerSortField.VISITS: _visits_count(User.id).label("visits"),
             ReferrerSortField.REGISTRATIONS: _registrations_count(User.id).label("registrations"),
             ReferrerSortField.USERS_WITH_BIDS: _users_with_bids_count(User.id).label("users_with_bids"),
-            ReferrerSortField.PURCHASES_PAID: _rewards_count(User.id, RewardStatus.APPROVED).label("purchases_paid"),
+            ReferrerSortField.PURCHASES_PAID: _rewards_count(User.id).label("purchases_paid"),
             ReferrerSortField.CREATED_AT: User.created_at,
         }
 
@@ -138,7 +117,6 @@ class ReferralStatsService:
                 columns[ReferrerSortField.VISITS],
                 columns[ReferrerSortField.REGISTRATIONS],
                 columns[ReferrerSortField.USERS_WITH_BIDS],
-                _rewards_count(User.id, RewardStatus.PENDING).label("purchases_pending"),
                 columns[ReferrerSortField.PURCHASES_PAID],
             )
         )
@@ -175,8 +153,7 @@ class ReferralStatsService:
                 Referral.created_at.label("registered_at"),
                 Referral.bids_count,
                 Referral.first_bid_at,
-                _referred_user_rewards_count(referrer_id, RewardStatus.APPROVED).label("purchases_paid"),
-                _referred_user_rewards_count(referrer_id, RewardStatus.PENDING).label("purchases_pending"),
+                _referred_user_rewards_count(referrer_id).label("purchases_paid"),
             )
             .join(Referral, Referral.referred_user_id == User.id)
             .where(Referral.referrer_id == referrer_id)
@@ -185,14 +162,11 @@ class ReferralStatsService:
             stmt = stmt.where(User.email_verified.is_(True))
         return stmt.order_by(Referral.created_at.desc(), Referral.id.desc())
 
-    def get_rewards_stmt(self, referrer_id: int, status: Optional[RewardStatus] = None) -> Select:
+    def get_rewards_stmt(self, referrer_id: int) -> Select:
         stmt = select(ReferralReward).where(ReferralReward.referrer_id == referrer_id)
-        if status is not None:
-            stmt = stmt.where(ReferralReward.status == status)
         return stmt.order_by(ReferralReward.created_at.desc(), ReferralReward.id.desc())
 
-    def get_admin_rewards_stmt(self, referrer_id: Optional[int] = None,
-                               status: Optional[RewardStatus] = None) -> Select:
+    def get_admin_rewards_stmt(self, referrer_id: int | None = None) -> Select:
         stmt = (
             select(
                 ReferralReward,
@@ -206,6 +180,4 @@ class ReferralStatsService:
         )
         if referrer_id is not None:
             stmt = stmt.where(ReferralReward.referrer_id == referrer_id)
-        if status is not None:
-            stmt = stmt.where(ReferralReward.status == status)
         return stmt.order_by(ReferralReward.created_at.desc(), ReferralReward.id.desc())

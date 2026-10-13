@@ -1,17 +1,10 @@
-import enum
 from datetime import datetime, UTC
 from typing import Optional
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.models import Base
-
-
-class RewardStatus(str, enum.Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    CANCELLED = "cancelled"
 
 
 class ReferralReward(Base):
@@ -29,10 +22,6 @@ class ReferralReward(Base):
 
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    status: Mapped[RewardStatus] = mapped_column(Enum(RewardStatus, native_enum=False, length=32), nullable=False,
-                                                 default=RewardStatus.PENDING, index=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC),
                                                  nullable=False)
-    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

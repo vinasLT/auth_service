@@ -74,7 +74,6 @@ class Settings(BaseSettings):
     REFERRAL_BASE_URL: str = 'http://localhost:3000/?ref='
     REFERRAL_REWARD_AMOUNT_CENTS: int = 10000
     REFERRAL_CURRENCY: str = 'EUR'
-    REFERRAL_VISIT_DEDUP_HOURS: int = 24
 
     # rpc
     GRPC_SERVER_PORT: int = 50054

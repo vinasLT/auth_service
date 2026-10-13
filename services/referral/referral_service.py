@@ -1,10 +1,8 @@
-from datetime import datetime, UTC, timedelta
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import settings
 from core.logger import logger
 from database.crud.referral import ReferralRecordService
 from database.crud.referral_visit import ReferralVisitService
@@ -80,19 +78,12 @@ class ReferralService:
         })
         return referral
 
-    async def track_visit(
-            self,
-            referral_code: str,
-            visitor_id: Optional[str],
-            ip_address: Optional[str],
-            user_agent: Optional[str],
-            landing_url: Optional[str],
-    ) -> Optional[ReferralVisit]:
+    async def track_visit(self, referral_code: str, visitor_id: str) -> Optional[ReferralVisit]:
         referrer = await self.get_active_referrer(referral_code)
         if not referrer:
             return None
 
-        existing = await self._find_existing_visit(referrer.id, visitor_id, ip_address, user_agent)
+        existing = await self.visit_service.get_by_referrer_and_visitor(referrer.id, visitor_id)
         if existing:
             return existing
 
@@ -100,26 +91,7 @@ class ReferralService:
             return await self.visit_service.create(ReferralVisitCreate(
                 referrer_id=referrer.id,
                 visitor_id=visitor_id,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                landing_url=landing_url,
             ))
         except IntegrityError:
             await self.session.rollback()
-            if visitor_id:
-                return await self.visit_service.get_by_referrer_and_visitor(referrer.id, visitor_id)
-            raise
-
-    async def _find_existing_visit(
-            self,
-            referrer_id: int,
-            visitor_id: Optional[str],
-            ip_address: Optional[str],
-            user_agent: Optional[str],
-    ) -> Optional[ReferralVisit]:
-        if visitor_id:
-            return await self.visit_service.get_by_referrer_and_visitor(referrer_id, visitor_id)
-        if not ip_address:
-            return None
-        since = datetime.now(UTC) - timedelta(hours=settings.REFERRAL_VISIT_DEDUP_HOURS)
-        return await self.visit_service.get_recent_by_fingerprint(referrer_id, ip_address, user_agent, since)
+            return await self.visit_service.get_by_referrer_and_visitor(referrer.id, visitor_id)

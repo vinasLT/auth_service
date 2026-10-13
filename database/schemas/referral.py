@@ -3,15 +3,10 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from database.models.referral_reward import RewardStatus
-
 
 class ReferralVisitCreate(BaseModel):
     referrer_id: int
-    visitor_id: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    landing_url: Optional[str] = None
+    visitor_id: str
 
 
 class ReferralVisitUpdate(BaseModel):
@@ -37,14 +32,10 @@ class ReferralRewardCreate(BaseModel):
     vin: Optional[str] = None
     amount_cents: int
     currency: str
-    status: RewardStatus = RewardStatus.PENDING
-    cancelled_at: Optional[datetime] = None
 
 
 class ReferralRewardUpdate(BaseModel):
-    status: Optional[RewardStatus] = None
-    approved_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
+    pass
 
 
 class ReferralRewardRead(BaseModel):
@@ -54,9 +45,6 @@ class ReferralRewardRead(BaseModel):
     vin: Optional[str]
     amount_cents: int
     currency: str
-    status: RewardStatus
     created_at: datetime
-    approved_at: Optional[datetime]
-    cancelled_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)

@@ -16,20 +16,8 @@ class BidPlacedEvent(BaseEvent):
     created_at: Optional[datetime] = None
 
 
-class PurchaseCreatedEvent(BaseEvent):
-    purchase_id: str = Field(..., min_length=1)
+class BidPaidEvent(BaseEvent):
+    bid_id: str = Field(..., min_length=1)
     lot_id: Optional[str] = None
     vin: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-
-class PurchasePaidEvent(BaseEvent):
-    purchase_id: str = Field(..., min_length=1)
-    lot_id: Optional[str] = None
-    vin: Optional[str] = None
-    paid_at: Optional[datetime] = None
-
-
-class PurchaseCancelledEvent(BaseEvent):
-    purchase_id: str = Field(..., min_length=1)
-    reason: Optional[str] = None
+    payment_status: Optional[str] = None
