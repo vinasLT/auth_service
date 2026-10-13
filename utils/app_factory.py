@@ -13,6 +13,7 @@ from core.logger import logger
 from database.db.session import AsyncSessionLocal
 from services.rabbit_service.referral_consumer import ReferralRabbitConsumer
 from services.rabbit_service.routing_keys import RoutingKeys
+from services.rabbit_service.service import RabbitMQPublisher
 from routers.v1.private.permission import permissions_router
 from routers.v1.private.referral import referral_router
 from routers.v1.private.role import roles_router
@@ -89,8 +90,11 @@ def create_app(
 
         if connection is None:
             raise RuntimeError("RabbitMQ connection not established after retries")
+        publisher = RabbitMQPublisher()
+        await publisher.connect()
         consumer = ReferralRabbitConsumer(
             AsyncSessionLocal,
+            publisher,
             connection,
             [member.value for member in RoutingKeys],
         )
@@ -100,6 +104,7 @@ def create_app(
         logger.info(f"{settings.APP_NAME} started!")
         yield
         await consumer.stop_consuming()
+        await publisher.close()
 
         if setup_limiter:
             await FastAPILimiter.close()

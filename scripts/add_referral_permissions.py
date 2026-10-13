@@ -16,7 +16,10 @@ from database.models import Permission, Role, RolePermission
 REFERRAL_PERMISSIONS = [
     ("auth.referral.own", "read", "Read own referral stats", ["user"]),
     ("auth.referral.all", "read", "Read all referral stats", ["admin", "developer"]),
-    ("auth.referral.all", "write", "Manage referral wallets", ["admin", "developer"]),
+    ("auth.referral.all", "write", "Manage referral rewards", ["admin", "developer"]),
+    ("payments.referral_wallet.own", "read", "Read own referral wallet", ["user"]),
+    ("payments.referral_wallet.all", "read", "Read all referral wallets", ["admin", "developer"]),
+    ("payments.referral_wallet.all", "write", "Manage referral wallets", ["admin", "developer"]),
 ]
 
 

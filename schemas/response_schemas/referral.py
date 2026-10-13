@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
-from database.schemas.referral import ReferralRewardRead, WalletTransactionRead
+from database.schemas.referral import ReferralRewardRead
 
 
 class ReferralVisitOut(BaseModel):
@@ -17,13 +17,7 @@ class ReferralStatsOut(BaseModel):
     users_with_bids: int = 0
     purchases_pending: int = 0
     purchases_paid: int = 0
-
-
-class WalletOut(BaseModel):
-    balance_cents: int = 0
     pending_cents: int = 0
-    total_earned_cents: int = 0
-    total_paid_out_cents: int = 0
     currency: str
 
 
@@ -31,7 +25,6 @@ class MyReferralOut(BaseModel):
     referral_code: str
     referral_link: str
     stats: ReferralStatsOut
-    wallet: WalletOut
 
 
 class ReferredUserOut(BaseModel):
@@ -49,10 +42,6 @@ class RewardOut(ReferralRewardRead):
     pass
 
 
-class WalletTransactionOut(WalletTransactionRead):
-    pass
-
-
 class AdminReferralStatsOut(BaseModel):
     total_visits: int = 0
     total_registrations: int = 0
@@ -61,8 +50,6 @@ class AdminReferralStatsOut(BaseModel):
     rewards_pending_cents: int = 0
     rewards_approved_count: int = 0
     rewards_approved_cents: int = 0
-    total_wallet_balance_cents: int = 0
-    total_paid_out_cents: int = 0
     currency: str
 
 
@@ -77,9 +64,6 @@ class ReferrerOut(BaseModel):
     users_with_bids: int = 0
     purchases_pending: int = 0
     purchases_paid: int = 0
-    balance_cents: int = 0
-    total_earned_cents: int = 0
-    total_paid_out_cents: int = 0
 
 
 class AdminReferralUserOut(BaseModel):
@@ -91,7 +75,6 @@ class AdminReferralUserOut(BaseModel):
     referral_link: Optional[str] = None
     referred_by_uuid: Optional[str] = None
     stats: ReferralStatsOut
-    wallet: WalletOut
 
 
 class AdminReferredUserOut(BaseModel):
@@ -112,9 +95,3 @@ class AdminRewardOut(ReferralRewardRead):
     referrer_email: str
     referred_user_uuid: str
     referred_user_email: str
-
-
-class AdminWalletTransactionOut(WalletTransactionRead):
-    created_by_user_id: Optional[int] = None
-
-    model_config = ConfigDict(from_attributes=True)

@@ -4,7 +4,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 from database.models.referral_reward import RewardStatus
-from database.models.wallet_transaction import WalletTransactionType
 
 
 class ReferralVisitCreate(BaseModel):
@@ -59,43 +58,5 @@ class ReferralRewardRead(BaseModel):
     created_at: datetime
     approved_at: Optional[datetime]
     cancelled_at: Optional[datetime]
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ReferralWalletCreate(BaseModel):
-    user_id: int
-
-
-class ReferralWalletUpdate(BaseModel):
-    balance_cents: Optional[int] = None
-    total_earned_cents: Optional[int] = None
-    total_paid_out_cents: Optional[int] = None
-
-
-class WalletTransactionCreate(BaseModel):
-    wallet_id: int
-    type: WalletTransactionType
-    amount_cents: int
-    balance_after_cents: int
-    reward_id: Optional[int] = None
-    created_by_user_id: Optional[int] = None
-    external_reference: Optional[str] = None
-    note: Optional[str] = None
-
-
-class WalletTransactionUpdate(BaseModel):
-    note: Optional[str] = None
-
-
-class WalletTransactionRead(BaseModel):
-    id: int
-    type: WalletTransactionType
-    amount_cents: int
-    balance_after_cents: int
-    reward_id: Optional[int]
-    external_reference: Optional[str]
-    note: Optional[str]
-    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

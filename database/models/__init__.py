@@ -12,5 +12,3 @@ from .many_to_many.role_permission import RolePermission
 from .referral_visit import ReferralVisit
 from .referral import Referral
 from .referral_reward import ReferralReward
-from .referral_wallet import ReferralWallet
-from .wallet_transaction import WalletTransaction

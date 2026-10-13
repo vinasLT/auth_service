@@ -4,7 +4,7 @@ from sqlalchemy import select, func, or_, Select, ScalarSelect
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from database.models import User, Referral, ReferralVisit, ReferralReward, ReferralWallet
+from database.models import User, Referral, ReferralVisit, ReferralReward
 from database.models.referral_reward import RewardStatus
 from schemas.request_schemas.referral import ReferrerSortField, SortOrder
 
@@ -109,10 +109,6 @@ class ReferralStatsService:
             rewards_sum(RewardStatus.PENDING).label("rewards_pending_cents"),
             rewards_count(RewardStatus.APPROVED).label("rewards_approved_count"),
             rewards_sum(RewardStatus.APPROVED).label("rewards_approved_cents"),
-            select(func.coalesce(func.sum(ReferralWallet.balance_cents), 0))
-            .scalar_subquery().label("total_wallet_balance_cents"),
-            select(func.coalesce(func.sum(ReferralWallet.total_paid_out_cents), 0))
-            .scalar_subquery().label("total_paid_out_cents"),
         )
         row = (await self.session.execute(stmt)).one()
         return dict(row._mapping)
@@ -129,9 +125,6 @@ class ReferralStatsService:
             ReferrerSortField.REGISTRATIONS: _registrations_count(User.id).label("registrations"),
             ReferrerSortField.USERS_WITH_BIDS: _users_with_bids_count(User.id).label("users_with_bids"),
             ReferrerSortField.PURCHASES_PAID: _rewards_count(User.id, RewardStatus.APPROVED).label("purchases_paid"),
-            ReferrerSortField.BALANCE: func.coalesce(ReferralWallet.balance_cents, 0).label("balance_cents"),
-            ReferrerSortField.TOTAL_EARNED: func.coalesce(ReferralWallet.total_earned_cents, 0)
-            .label("total_earned_cents"),
             ReferrerSortField.CREATED_AT: User.created_at,
         }
 
@@ -147,18 +140,13 @@ class ReferralStatsService:
                 columns[ReferrerSortField.USERS_WITH_BIDS],
                 _rewards_count(User.id, RewardStatus.PENDING).label("purchases_pending"),
                 columns[ReferrerSortField.PURCHASES_PAID],
-                columns[ReferrerSortField.BALANCE],
-                columns[ReferrerSortField.TOTAL_EARNED],
-                func.coalesce(ReferralWallet.total_paid_out_cents, 0).label("total_paid_out_cents"),
             )
-            .outerjoin(ReferralWallet, ReferralWallet.user_id == User.id)
         )
 
         if only_active:
             stmt = stmt.where(or_(
                 select(ReferralVisit.id).where(ReferralVisit.referrer_id == User.id).exists(),
                 select(Referral.id).where(Referral.referrer_id == User.id).exists(),
-                ReferralWallet.id.is_not(None),
             ))
 
         if search and search.strip():

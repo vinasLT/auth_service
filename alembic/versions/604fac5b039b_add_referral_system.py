@@ -61,19 +61,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_referral_visit_created_at'), 'referral_visit', ['created_at'], unique=False)
     op.create_index(op.f('ix_referral_visit_id'), 'referral_visit', ['id'], unique=False)
     op.create_index(op.f('ix_referral_visit_referrer_id'), 'referral_visit', ['referrer_id'], unique=False)
-    op.create_table('referral_wallet',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('balance_cents', sa.Integer(), nullable=False),
-    sa.Column('total_earned_cents', sa.Integer(), nullable=False),
-    sa.Column('total_paid_out_cents', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_referral_wallet_id'), 'referral_wallet', ['id'], unique=False)
-    op.create_index(op.f('ix_referral_wallet_user_id'), 'referral_wallet', ['user_id'], unique=True)
     op.create_table('referral',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('referrer_id', sa.Integer(), nullable=False),
@@ -90,27 +77,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_referral_id'), 'referral', ['id'], unique=False)
     op.create_index(op.f('ix_referral_referred_user_id'), 'referral', ['referred_user_id'], unique=True)
     op.create_index(op.f('ix_referral_referrer_id'), 'referral', ['referrer_id'], unique=False)
-    op.create_table('wallet_transaction',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('wallet_id', sa.Integer(), nullable=False),
-    sa.Column('type', sa.Enum('REWARD_CREDIT', 'REWARD_REVERSAL', 'PAYOUT', 'ADJUSTMENT', name='wallettransactiontype', native_enum=False, length=32), nullable=False),
-    sa.Column('amount_cents', sa.Integer(), nullable=False),
-    sa.Column('balance_after_cents', sa.Integer(), nullable=False),
-    sa.Column('reward_id', sa.Integer(), nullable=True),
-    sa.Column('created_by_user_id', sa.Integer(), nullable=True),
-    sa.Column('external_reference', sa.String(), nullable=True),
-    sa.Column('note', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.ForeignKeyConstraint(['created_by_user_id'], ['user.id'], ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['reward_id'], ['referral_reward.id'], ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['wallet_id'], ['referral_wallet.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_wallet_transaction_created_at'), 'wallet_transaction', ['created_at'], unique=False)
-    op.create_index(op.f('ix_wallet_transaction_id'), 'wallet_transaction', ['id'], unique=False)
-    op.create_index(op.f('ix_wallet_transaction_reward_id'), 'wallet_transaction', ['reward_id'], unique=False)
-    op.create_index(op.f('ix_wallet_transaction_type'), 'wallet_transaction', ['type'], unique=False)
-    op.create_index(op.f('ix_wallet_transaction_wallet_id'), 'wallet_transaction', ['wallet_id'], unique=False)
     op.add_column('user', sa.Column('referral_code', sa.String(length=12), nullable=True))
     op.add_column('user', sa.Column('referred_by_id', sa.Integer(), nullable=True))
     op.create_index(op.f('ix_user_referral_code'), 'user', ['referral_code'], unique=True)
@@ -127,19 +93,10 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_user_referral_code'), table_name='user')
     op.drop_column('user', 'referred_by_id')
     op.drop_column('user', 'referral_code')
-    op.drop_index(op.f('ix_wallet_transaction_wallet_id'), table_name='wallet_transaction')
-    op.drop_index(op.f('ix_wallet_transaction_type'), table_name='wallet_transaction')
-    op.drop_index(op.f('ix_wallet_transaction_reward_id'), table_name='wallet_transaction')
-    op.drop_index(op.f('ix_wallet_transaction_id'), table_name='wallet_transaction')
-    op.drop_index(op.f('ix_wallet_transaction_created_at'), table_name='wallet_transaction')
-    op.drop_table('wallet_transaction')
     op.drop_index(op.f('ix_referral_referrer_id'), table_name='referral')
     op.drop_index(op.f('ix_referral_referred_user_id'), table_name='referral')
     op.drop_index(op.f('ix_referral_id'), table_name='referral')
     op.drop_table('referral')
-    op.drop_index(op.f('ix_referral_wallet_user_id'), table_name='referral_wallet')
-    op.drop_index(op.f('ix_referral_wallet_id'), table_name='referral_wallet')
-    op.drop_table('referral_wallet')
     op.drop_index(op.f('ix_referral_visit_referrer_id'), table_name='referral_visit')
     op.drop_index(op.f('ix_referral_visit_id'), table_name='referral_visit')
     op.drop_index(op.f('ix_referral_visit_created_at'), table_name='referral_visit')

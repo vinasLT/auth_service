@@ -19,7 +19,8 @@ from schemas.event_schemas.referral import (
     PurchaseCancelledEvent,
 )
 from services.rabbit_service.routing_keys import RoutingKeys
-from services.referral.wallet_service import WalletService
+from services.rabbit_service.service import RabbitMQPublisher
+from services.referral.reward_service import RewardService
 
 
 class UnknownEventError(Exception):
@@ -27,12 +28,12 @@ class UnknownEventError(Exception):
 
 
 class ReferralEventHandler:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, publisher: RabbitMQPublisher):
         self.session = session
         self.user_service = UserService(session)
         self.referral_record_service = ReferralRecordService(session)
         self.reward_service = ReferralRewardService(session)
-        self.wallet_service = WalletService(session)
+        self.reward_actions = RewardService(session, publisher)
 
     async def handle(self, routing_key: str, payload: dict) -> None:
         handlers = {
@@ -74,7 +75,7 @@ class ReferralEventHandler:
                 "purchase_id": event.purchase_id,
             })
             return
-        await self.wallet_service.approve_reward(reward.id)
+        await self.reward_actions.approve_reward(reward.id)
 
     async def handle_purchase_cancelled(self, payload: dict) -> None:
         event = PurchaseCancelledEvent.model_validate(payload)
@@ -92,7 +93,7 @@ class ReferralEventHandler:
                 "reason": event.reason,
             })
             return
-        await self.wallet_service.cancel_reward(reward.id, note=event.reason)
+        await self.reward_actions.cancel_reward(reward.id, note=event.reason)
 
     async def _get_referral(self, user_uuid: str) -> Optional[Referral]:
         user = await self.user_service.get_user_by_uuid(user_uuid)

@@ -27,4 +27,7 @@ id,name,description,resource,action,created_at
 26,write favorites all,,favorites.all,write,2025-11-13 08:36:28.699061+00
 27,Read own referral stats,Read own referral stats,auth.referral.own,read,2026-10-12 15:00:00.000000+00
 28,Read all referral stats,Read all referral stats,auth.referral.all,read,2026-10-12 15:00:00.000000+00
-29,Manage referral wallets,Manage referral wallets,auth.referral.all,write,2026-10-12 15:00:00.000000+00
+29,Manage referral rewards,Manage referral rewards,auth.referral.all,write,2026-10-12 15:00:00.000000+00
+30,Read own referral wallet,Read own referral wallet,payments.referral_wallet.own,read,2026-10-12 16:30:00.000000+00
+31,Read all referral wallets,Read all referral wallets,payments.referral_wallet.all,read,2026-10-12 16:30:00.000000+00
+32,Manage referral wallets,Manage referral wallets,payments.referral_wallet.all,write,2026-10-12 16:30:00.000000+00

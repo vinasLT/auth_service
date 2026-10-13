@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import Permissions, settings
 from database.models import ReferralVisit, ReferralReward, Referral
 from database.models.referral_reward import RewardStatus
-from services.referral.wallet_service import WalletService
+from services.rabbit_service.routing_keys import ReferralPublishRoutingKeys
 from tests.unit.referral.conftest import create_user, create_referred_user
 
 REWARD = settings.REFERRAL_REWARD_AMOUNT_CENTS
@@ -26,10 +26,12 @@ async def _add_reward(session: AsyncSession, referrer, referred, purchase_id: st
         currency=settings.REFERRAL_CURRENCY,
         status=RewardStatus.PENDING,
     )
+    if status == RewardStatus.APPROVED:
+        reward.status = RewardStatus.APPROVED
+        reward.approved_at = datetime.now(UTC)
     session.add(reward)
     await session.commit()
-    if status == RewardStatus.APPROVED:
-        await WalletService(session).approve_reward(reward.id)
+    await session.refresh(reward)
     return reward
 
 
@@ -60,7 +62,7 @@ async def referral_data(session: AsyncSession):
 @pytest.mark.asyncio
 class TestMyReferralEndpoints:
 
-    async def test_me_returns_link_stats_and_wallet(self, client: AsyncClient, login_as, referral_data):
+    async def test_me_returns_link_and_stats(self, client: AsyncClient, login_as, referral_data):
         login_as(referral_data["referrer"], [Permissions.REFERRAL_READ_OWN])
 
         response = await client.get("v1/private/referral/me")
@@ -75,14 +77,10 @@ class TestMyReferralEndpoints:
             "users_with_bids": 1,
             "purchases_pending": 1,
             "purchases_paid": 1,
-        }
-        assert data["wallet"] == {
-            "balance_cents": REWARD,
             "pending_cents": REWARD,
-            "total_earned_cents": REWARD,
-            "total_paid_out_cents": 0,
             "currency": settings.REFERRAL_CURRENCY,
         }
+        assert "wallet" not in data
 
     async def test_me_generates_missing_code(self, client: AsyncClient, session, login_as):
         legacy = await create_user(session)
@@ -93,7 +91,7 @@ class TestMyReferralEndpoints:
         assert response.status_code == 200
         assert len(response.json()["referral_code"]) == 8
         assert response.json()["stats"]["visits"] == 0
-        assert response.json()["wallet"]["balance_cents"] == 0
+        assert response.json()["stats"]["pending_cents"] == 0
 
     async def test_me_requires_permission(self, client: AsyncClient, login_as, referral_data):
         login_as(referral_data["referrer"], [])
@@ -126,17 +124,6 @@ class TestMyReferralEndpoints:
         assert response.status_code == 200
         assert [r["external_purchase_id"] for r in response.json()["data"]] == ["purchase-pending"]
 
-    async def test_my_transactions(self, client: AsyncClient, login_as, referral_data):
-        login_as(referral_data["referrer"], [Permissions.REFERRAL_READ_OWN])
-
-        response = await client.get("v1/private/referral/me/transactions")
-
-        assert response.status_code == 200
-        items = response.json()["data"]
-        assert len(items) == 1
-        assert items[0]["type"] == "reward_credit"
-        assert items[0]["amount_cents"] == REWARD
-
 
 @pytest.mark.asyncio
 class TestAdminReferralEndpoints:
@@ -154,24 +141,16 @@ class TestAdminReferralEndpoints:
         assert data["rewards_pending_count"] == 1
         assert data["rewards_pending_cents"] == REWARD
         assert data["rewards_approved_count"] == 1
-        assert data["total_wallet_balance_cents"] == REWARD
+        assert data["rewards_approved_cents"] == REWARD
+        assert "total_wallet_balance_cents" not in data
 
     async def test_admin_endpoints_require_permission(self, client: AsyncClient, login_as, referral_data):
         login_as(referral_data["admin"], [Permissions.REFERRAL_READ_OWN])
-        referrer_uuid = referral_data["referrer"].uuid_key
 
         assert (await client.get("v1/private/referral/admin/stats")).status_code == 403
-        assert (await client.post(f"v1/private/referral/admin/users/{referrer_uuid}/payouts",
-                                  json={"amount_cents": 100})).status_code == 403
-
-    async def test_payout_requires_write_permission(self, client: AsyncClient, login_as, referral_data):
-        login_as(referral_data["admin"], [Permissions.REFERRAL_READ_ALL])
-        referrer_uuid = referral_data["referrer"].uuid_key
-
-        response = await client.post(f"v1/private/referral/admin/users/{referrer_uuid}/payouts",
-                                     json={"amount_cents": 100})
-
-        assert response.status_code == 403
+        assert (await client.post(
+            f"v1/private/referral/admin/rewards/{referral_data['pending'].id}/approve"
+        )).status_code == 403
 
     async def test_referrers_list(self, client: AsyncClient, login_as, referral_data):
         login_as(referral_data["admin"], ADMIN_PERMISSIONS)
@@ -186,7 +165,7 @@ class TestAdminReferralEndpoints:
         assert row["visits"] == 4
         assert row["registrations"] == 2
         assert row["purchases_paid"] == 1
-        assert row["balance_cents"] == REWARD
+        assert "balance_cents" not in row
 
     async def test_referrers_search(self, client: AsyncClient, login_as, referral_data):
         login_as(referral_data["admin"], ADMIN_PERMISSIONS)
@@ -207,16 +186,16 @@ class TestAdminReferralEndpoints:
         referrals = await client.get(f"v1/private/referral/admin/users/{referrer_uuid}/referrals",
                                      params={"size": 10})
         rewards = await client.get(f"v1/private/referral/admin/users/{referrer_uuid}/rewards")
-        transactions = await client.get(f"v1/private/referral/admin/users/{referrer_uuid}/transactions")
 
         assert detail.status_code == 200
         assert detail.json()["stats"]["registrations"] == 2
+        assert detail.json()["stats"]["pending_cents"] == REWARD
+        assert "wallet" not in detail.json()
         assert bidder_detail.json()["referred_by_uuid"] == referrer_uuid
         assert referrals.json()["count"] == 3
         assert {r["email"] for r in referrals.json()["data"]} >= {"unverified@mail.com"}
         assert rewards.json()["count"] == 2
         assert rewards.json()["data"][0]["referred_user_uuid"] == bidder_uuid
-        assert transactions.json()["count"] == 1
 
     async def test_admin_unknown_user(self, client: AsyncClient, login_as, referral_data):
         login_as(referral_data["admin"], ADMIN_PERMISSIONS)
@@ -225,65 +204,10 @@ class TestAdminReferralEndpoints:
 
         assert response.status_code == 404
 
-    async def test_payout_deducts_wallet(self, client: AsyncClient, login_as, referral_data):
-        login_as(referral_data["admin"], ADMIN_PERMISSIONS)
-        referrer_uuid = referral_data["referrer"].uuid_key
-
-        response = await client.post(
-            f"v1/private/referral/admin/users/{referrer_uuid}/payouts",
-            json={"amount_cents": 4000, "note": "bank transfer", "external_reference": "TX-1"},
-        )
-
-        assert response.status_code == 201
-        data = response.json()
-        assert data["type"] == "payout"
-        assert data["amount_cents"] == -4000
-        assert data["balance_after_cents"] == REWARD - 4000
-        assert data["external_reference"] == "TX-1"
-        assert data["created_by_user_id"] == referral_data["admin"].id
-
-        wallet = (await client.get(f"v1/private/referral/admin/users/{referrer_uuid}")).json()["wallet"]
-        assert wallet["balance_cents"] == REWARD - 4000
-        assert wallet["total_paid_out_cents"] == 4000
-        assert wallet["total_earned_cents"] == REWARD
-
-    async def test_payout_over_balance_is_rejected(self, client: AsyncClient, login_as, referral_data):
-        login_as(referral_data["admin"], ADMIN_PERMISSIONS)
-        referrer_uuid = referral_data["referrer"].uuid_key
-
-        response = await client.post(f"v1/private/referral/admin/users/{referrer_uuid}/payouts",
-                                     json={"amount_cents": REWARD + 1})
-
-        assert response.status_code == 400
-        assert response.json()["type"] == "insufficient-wallet-balance"
-
-    @pytest.mark.parametrize("amount", [0, -100])
-    async def test_payout_amount_must_be_positive(self, client: AsyncClient, login_as, referral_data, amount):
-        login_as(referral_data["admin"], ADMIN_PERMISSIONS)
-        referrer_uuid = referral_data["referrer"].uuid_key
-
-        response = await client.post(f"v1/private/referral/admin/users/{referrer_uuid}/payouts",
-                                     json={"amount_cents": amount})
-
-        assert response.status_code == 422
-
-    async def test_adjustments(self, client: AsyncClient, login_as, referral_data):
-        login_as(referral_data["admin"], ADMIN_PERMISSIONS)
-        url = f"v1/private/referral/admin/users/{referral_data['referrer'].uuid_key}/adjustments"
-
-        credit = await client.post(url, json={"amount_cents": 500, "note": "bonus"})
-        too_much = await client.post(url, json={"amount_cents": -(REWARD + 501), "note": "fix"})
-        zero = await client.post(url, json={"amount_cents": 0, "note": "noop"})
-
-        assert credit.status_code == 201
-        assert credit.json()["balance_after_cents"] == REWARD + 500
-        assert too_much.status_code == 400
-        assert zero.status_code == 422
-
-    async def test_manual_approve_and_cancel_with_reversal(self, client: AsyncClient, login_as, referral_data):
+    async def test_manual_approve_and_cancel_publish_events(self, client: AsyncClient, login_as, referral_data,
+                                                            mock_rabbit_mq):
         login_as(referral_data["admin"], ADMIN_PERMISSIONS)
         reward_id = referral_data["pending"].id
-        referrer_uuid = referral_data["referrer"].uuid_key
 
         approved = await client.post(f"v1/private/referral/admin/rewards/{reward_id}/approve")
         assert approved.status_code == 200
@@ -294,12 +218,15 @@ class TestAdminReferralEndpoints:
         assert cancelled.status_code == 200
         assert cancelled.json()["status"] == "cancelled"
 
-        transactions = (await client.get(
-            f"v1/private/referral/admin/users/{referrer_uuid}/transactions", params={"size": 10}
-        )).json()["data"]
-        assert [t["type"] for t in transactions] == ["reward_reversal", "reward_credit", "reward_credit"]
-        assert transactions[0]["balance_after_cents"] == REWARD
-        assert transactions[0]["note"] == "purchase refunded"
+        published = [call.args for call in mock_rabbit_mq.publish.await_args_list]
+        assert published[0][0] == ReferralPublishRoutingKeys.REWARD_APPROVED.value
+        assert published[0][1]["reward_id"] == reward_id
+        assert published[0][1]["referrer_uuid"] == referral_data["referrer"].uuid_key
+        assert published[0][1]["admin_uuid"] == referral_data["admin"].uuid_key
+        assert published[0][1]["note"] is None
+        assert published[1][0] == ReferralPublishRoutingKeys.REWARD_CANCELLED.value
+        assert published[1][1]["note"] == "purchase refunded"
+        assert published[1][1]["admin_uuid"] == referral_data["admin"].uuid_key
 
         pending_rewards = await client.get("v1/private/referral/admin/rewards", params={"status": "pending"})
         assert pending_rewards.json()["count"] == 0
