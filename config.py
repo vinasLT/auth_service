@@ -71,9 +71,14 @@ class Settings(BaseSettings):
     RABBITMQ_QUEUE_NAME: str = 'auth.referral'
 
     # Referral
-    REFERRAL_BASE_URL: str = 'http://localhost:3000/?ref='
     REFERRAL_REWARD_AMOUNT_CENTS: int = 10000
     REFERRAL_CURRENCY: str = 'EUR'
+
+    @property
+    def REFERRAL_BASE_URL(self) -> str:
+        if self.ENVIRONMENT == Environment.PRODUCTION:
+            return "https://vinas.lt/?ref="
+        return "http://localhost:3000/?ref="
 
     # rpc
     GRPC_SERVER_PORT: int = 50054
