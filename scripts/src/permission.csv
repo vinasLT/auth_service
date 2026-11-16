@@ -41,3 +41,4 @@ id,name,description,resource,action,created_at
 40,Write all orders,Write all orders,order.all,write,2026-11-09 11:50:00.000000+00
 41,Delete all orders,Delete all orders,order.all,delete,2026-11-09 11:50:00.000000+00
 42,Write own plan,Write own plan,payments.plan.own,write,2026-11-09 11:50:00.000000+00
+43,Read SEO jobs,Read scheduled job health and run history,api_service.seo_jobs.all,read,2026-11-16 12:00:00.000000+00
