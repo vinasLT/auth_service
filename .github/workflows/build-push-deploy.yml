@@ -139,13 +139,23 @@ jobs:
     steps:
       - name: Deploy on server via SSH
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: INFISICAL_CLIENT_ID,INFISICAL_CLIENT_SECRET,INFISICAL_PROJECT_ID
           script: |
-            set -x
-            docker pull ${{ env.IMAGE_NAME }}:main
-            cd /srv/vinaslt/deploy_conf
-            docker compose up -d --build
+            set -e
+            cd /srv/vinas/deploy_conf
+            export INFISICAL_TOKEN=$(infisical login --method=universal-auth \
+              --client-id="$INFISICAL_CLIENT_ID" --client-secret="$INFISICAL_CLIENT_SECRET" \
+              --domain=https://eu.infisical.com --silent --plain)
+            [ -n "$INFISICAL_TOKEN" ] || { echo "Infisical login failed"; exit 2; }
+            export INFISICAL_PROJECT_ID
+            # make pulls the new images and updates changed containers under Infisical
+            make deploy ENV=prod
             echo "Deployment complete"

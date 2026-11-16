@@ -31,3 +31,13 @@ id,name,description,resource,action,created_at
 30,Read own referral wallet,Read own referral wallet,payments.referral_wallet.own,read,2026-10-12 16:30:00.000000+00
 31,Read all referral wallets,Read all referral wallets,payments.referral_wallet.all,read,2026-10-12 16:30:00.000000+00
 32,Manage referral wallets,Manage referral wallets,payments.referral_wallet.all,write,2026-10-12 16:30:00.000000+00
+33,Read own carfax,Read own carfax,carfax.own,read,2026-11-09 11:50:00.000000+00
+34,Write own carfax,Write own carfax,carfax.own,write,2026-11-09 11:50:00.000000+00
+35,Read all carfax,Read all carfax,carfax.all,read,2026-11-09 11:50:00.000000+00
+36,Full own favorites,Full own favorites,favorites.own,full,2026-11-09 11:50:00.000000+00
+37,Read own orders,Read own orders,order.own,read,2026-11-09 11:50:00.000000+00
+38,Write own orders,Write own orders,order.own,write,2026-11-09 11:50:00.000000+00
+39,Read all orders,Read all orders,order.all,read,2026-11-09 11:50:00.000000+00
+40,Write all orders,Write all orders,order.all,write,2026-11-09 11:50:00.000000+00
+41,Delete all orders,Delete all orders,order.all,delete,2026-11-09 11:50:00.000000+00
+42,Write own plan,Write own plan,payments.plan.own,write,2026-11-09 11:50:00.000000+00

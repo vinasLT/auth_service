@@ -7,9 +7,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import pandas as pd
-from sqlalchemy import Engine, text
-from database.db.session import engine
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session
+
 from core.logger import logger
+from database.db.session import engine
+from database.models import Permission, Role, RolePermission
 
 
 def _coerce_bool_series(series: pd.Series) -> pd.Series:
@@ -34,102 +37,79 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
     return series.map(to_bool)
 
 
-def reset_all_sequences(db_engine: Engine):
-    if db_engine.dialect.name != "postgresql":
-        logger.info("Skipping sequence reset for non-PostgreSQL dialect")
-        return
-    sql = """
-DO $$
-DECLARE
-  r record;
-  max_id bigint;
-  seq_reg regclass;
-  seq_schema text;
-  seq_name text;
-  startv bigint;
-BEGIN
-  FOR r IN
-    SELECT
-      n.nspname AS sch,
-      c.relname AS tbl,
-      a.attname AS col,
-      pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) AS seq
-    FROM pg_class c
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
-    WHERE c.relkind IN ('r','p')
-      AND n.nspname NOT IN ('pg_catalog','information_schema','pg_toast')
-  LOOP
-    IF r.seq IS NOT NULL THEN
-      seq_reg := r.seq::regclass;
-      SELECT ns.nspname, cl.relname
-      INTO seq_schema, seq_name
-      FROM pg_class cl
-      JOIN pg_namespace ns ON ns.oid = cl.relnamespace
-      WHERE cl.oid = seq_reg;
-
-      SELECT start_value
-      INTO startv
-      FROM pg_sequences
-      WHERE schemaname = seq_schema AND sequencename = seq_name;
-
-      EXECUTE format('SELECT MAX(%I) FROM %I.%I', r.col, r.sch, r.tbl) INTO max_id;
-
-      IF max_id IS NULL THEN
-        EXECUTE format('SELECT setval(%L, %s, false)', r.seq, startv);
-      ELSE
-        EXECUTE format('SELECT setval(%L, %s, true)', r.seq, max_id);
-      END IF;
-    END IF;
-  END LOOP;
-END $$;
-"""
-    with db_engine.begin() as conn:
-        conn.execute(text(sql))
+def _optional_str(value) -> str | None:
+    if pd.isna(value):
+        return None
+    return str(value)
 
 
 def seed_db(db_engine: Engine):
     src_dir = CURRENT_FILE.parent / 'src'
+    permission_df = pd.read_csv(src_dir / 'permission.csv')
+    role_df = pd.read_csv(src_dir / 'role.csv')
+    role_permissions_df = pd.read_csv(src_dir / 'role_permissions.csv')
 
-    tables = {
-        'permission': src_dir / 'permission.csv',
-        'role': src_dir / 'role.csv',
-        'role_permissions': src_dir / 'role_permissions.csv',
-    }
+    if 'is_default' in role_df.columns:
+        role_df['is_default'] = _coerce_bool_series(role_df['is_default'])
 
-    delete_order = [
-        'role_permissions',
-        'role',
-        'permission',
-    ]
+    with Session(db_engine) as session, session.begin():
+        csv_permission_id_to_db: dict[int, Permission] = {}
+        for row in permission_df.itertuples(index=False):
+            permission = session.scalar(
+                select(Permission).where(
+                    Permission.resource == row.resource,
+                    Permission.action == row.action,
+                )
+            )
+            if permission is None:
+                permission = Permission(
+                    name=row.name,
+                    description=_optional_str(row.description),
+                    resource=row.resource,
+                    action=row.action,
+                )
+                session.add(permission)
+                session.flush()
+                logger.info(f"Created permission {row.resource}:{row.action}")
+            csv_permission_id_to_db[int(row.id)] = permission
 
-    insert_order = [
-        'permission',
-        'role',
-        'role_permissions'
-    ]
+        csv_role_id_to_db: dict[int, Role] = {}
+        for row in role_df.itertuples(index=False):
+            role = session.scalar(select(Role).where(Role.name == row.name))
+            if role is None:
+                role = Role(
+                    name=row.name,
+                    is_default=bool(row.is_default) if hasattr(row, 'is_default') else False,
+                    description=_optional_str(row.description),
+                )
+                session.add(role)
+                session.flush()
+                logger.info(f"Created role '{row.name}'")
+            csv_role_id_to_db[int(row.id)] = role
 
-    with db_engine.begin() as conn:
-        for table in delete_order:
-            logger.info(f'Clearing table {table}')
-            try:
-                conn.execute(text(f'DELETE FROM "{table}"'))
-            except Exception as e:
-                logger.warning(f'Failed to delete from {table}: {e}')
+        for row in role_permissions_df.itertuples(index=False):
+            role = csv_role_id_to_db.get(int(row.role_id))
+            permission = csv_permission_id_to_db.get(int(row.permission_id))
+            if role is None:
+                logger.warning(f"Role CSV id {row.role_id} not found, skipping role_permission")
+                continue
+            if permission is None:
+                logger.warning(
+                    f"Permission CSV id {row.permission_id} not found, skipping role_permission"
+                )
+                continue
 
-    for table in insert_order:
-        path = tables[table]
-        logger.info(f'Seeding table {table} from {path}')
-        df = pd.read_csv(path)
-        if df.empty:
-            logger.warning(f'Skipping {table}: CSV is empty')
-            continue
-        if table == 'role' and 'is_default' in df.columns:
-            df['is_default'] = _coerce_bool_series(df['is_default'])
-        df.to_sql(table, db_engine, if_exists='append', index=False)
-
-    logger.info('Resetting all sequences to match current max ids')
-    reset_all_sequences(db_engine)
+            linked = session.scalar(
+                select(RolePermission.id).where(
+                    RolePermission.role_id == role.id,
+                    RolePermission.permission_id == permission.id,
+                )
+            )
+            if linked is None:
+                session.add(RolePermission(role_id=role.id, permission_id=permission.id))
+                logger.info(
+                    f"Granted {permission.resource}:{permission.action} to role '{role.name}'"
+                )
 
 
 if __name__ == '__main__':
