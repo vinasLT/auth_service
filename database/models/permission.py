@@ -14,6 +14,7 @@ class ActionEnum(str, enum.Enum):
     WRITE = "write"
     READ = "read"
     DELETE = "delete"
+    FULL = "full"
 
 
 class Permission(Base):
